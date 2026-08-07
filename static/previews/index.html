@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site preview — BookitCMS</title>
+<!--
+  Live site preview.
+
+  Loads a saved copy of the real site in an iframe and drives it from this
+  tenant's tokens. The iframe is same-origin (both served from the Studio's
+  /static/), so everything can be written straight into its document.
+
+  Three things are supplied that a "save page as" loses:
+
+    1. The utility stylesheet, regenerated from the page's own class list by
+       scripts/build-preview-css.mjs and resolved against our token variables.
+    2. Web fonts, looked up from the tenant's --type-family-* values.
+    3. Placeholders for images whose local files are missing, styled from
+       tokens so they read as part of the design rather than as breakage.
+
+  Values arrive by localStorage for the first paint and BroadcastChannel for
+  live updates, so editing a colour in the Studio repaints this tab as you type.
+-->
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font: 14px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; background: #f4f5f7; }
+  #bar { display: flex; align-items: center; gap: 14px; padding: 9px 14px; background: #12161c; color: #fff; }
+  #bar .brand { font-weight: 700; }
+  #bar .tenant { opacity: .75; }
+  #bar .capture { opacity: .5; font-size: 12px; }
+  .seg { display: flex; background: rgba(255,255,255,.1); border-radius: 999px; padding: 3px; }
+  .seg a { color: #cbd5e1; text-decoration: none; font-size: 12.5px; padding: 5px 14px; border-radius: 999px; }
+  .seg a.on { background: #fff; color: #12161c; font-weight: 600; }
+  .spacer { flex: 1; }
+  .live { display: flex; align-items: center; gap: 7px; font-size: 12.5px; opacity: .85; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #21d466; display: block; }
+  .dot.idle { background: #64748b; }
+  button.plain, select.plain { background: rgba(255,255,255,.12); color: #fff; border: 0; border-radius: 7px; padding: 6px 10px; font-size: 12.5px; cursor: pointer; }
+  #diagOut { display:none; margin:0; padding:10px 14px; background:#1b2027; color:#cbd5e1;
+    font:12px/1.5 ui-monospace,Consolas,monospace; white-space:pre-wrap; max-height:340px; overflow:auto; }
+  #stage { height: calc(100% - 44px); overflow: auto; display: flex; justify-content: center; background: #e9ecf1; }
+  #site { border: 0; display: block; background: #fff; width: 100%; height: 100%; transition: width .2s; box-shadow: 0 0 30px rgba(0,0,0,.12); }
+</style>
+</head>
+<body>
+  <div id="bar">
+    <span class="brand">Site preview</span>
+    <span class="tenant" id="tenantName"></span>
+    <span class="capture" id="capture" title="These pages were saved from the AIR Shop (Moca) site. Structure and copy are Moca’s; the styling is the tenant you are previewing."></span>
+    <div class="seg">
+      <a id="tabTicketing" href="?product=ticketing">Ticketing</a>
+      <a id="tabVip" href="?product=vip">VIP</a>
+    </div>
+    <select class="plain" id="width" title="Viewport width">
+      <option value="100%">Desktop</option>
+      <option value="1024px">Laptop</option>
+      <option value="768px">Tablet</option>
+      <option value="390px">Phone</option>
+    </select>
+    <div class="spacer"></div>
+    <span class="live"><span class="dot idle" id="dot"></span><span id="liveText">connecting…</span></span>
+    <button class="plain" id="diag" title="What the preview can see">Diagnostics</button>
+    <button class="plain" id="reload">Reload</button>
+  </div>
+
+  <pre id="diagOut"></pre>
+  <div id="stage"><iframe id="site" title="Site preview"></iframe></div>
+
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var product = params.get('product') === 'vip' ? 'vip' : 'ticketing';
+  var tenant = params.get('tenant') || '';
+  var FILE = { ticketing: 'ticketing.html', vip: 'vip.html' };
+  // Both pages load their real stylesheets from the live sites (see
+  // scripts/prepare-previews.mjs), so nothing is reconstructed here.
+  var CHANNEL = 'bookitcms-tokens';
+  var STORE = 'bookitcms.preview.css';
+
+  document.getElementById('tenantName').textContent = tenant;
+  // The saved pages came from AIR Shop (Moca); everything else is a re-skin.
+  document.getElementById('capture').textContent =
+    tenant && tenant !== 'moca' ? '· Moca page, ' + tenant + ' styling' : '· captured from AIR Shop (Moca)';
+  document.getElementById('tab' + (product === 'vip' ? 'Vip' : 'Ticketing')).className = 'on';
+  ['tabTicketing', 'tabVip'].forEach(function (id) {
+    var a = document.getElementById(id);
+    a.href = a.getAttribute('href') + (tenant ? '&tenant=' + encodeURIComponent(tenant) : '');
+  });
+
+  var iframe = document.getElementById('site');
+  var currentCss = '';
+  try { currentCss = localStorage.getItem(STORE) || ''; } catch (e) {}
+
+  /** Styling a placeholder from tokens keeps a missing photo on-brand. */
+  var PLACEHOLDER_CSS =
+    '.cms-missing-image{background:linear-gradient(135deg,' +
+    'var(--color-surface-container-emphasized,#dfe4ea),var(--color-surface-container-subtle,#eef1f4))!important;' +
+    'position:relative;min-height:80px;object-fit:cover}' +
+    '.cms-missing-image::after{content:"";position:absolute;inset:0;' +
+    'background:var(--color-effect-overlay-media-dim,rgba(0,0,0,.06))}';
+
+  function head(doc) { return doc.head || doc.getElementsByTagName('head')[0]; }
+
+  function ensure(doc, id, tag) {
+    var el = doc.getElementById(id);
+    if (!el) { el = doc.createElement(tag); el.id = id; head(doc).appendChild(el); }
+    return el;
+  }
+
+  /** Token values. Doubled :root beats the site's own :root on specificity. */
+  function injectTokens(doc, css) {
+    ensure(doc, 'cms-token-overrides', 'style').textContent =
+      ':root:root{' + css + '}' + PLACEHOLDER_CSS;
+  }
+
+  /**
+   * The live stylesheets already ship the site's own faces. This only adds a
+   * family when the tenant being previewed names one the captured page does not
+   * carry — previewing Bookit's Rethink Sans on a page built for Moca, say.
+   */
+  function injectFonts(doc, css) {
+    var families = [];
+    var re = /--type-family-[a-z]+\s*:\s*([^;]+);/g;
+    var m;
+    while ((m = re.exec(css))) {
+      var name = m[1].trim().replace(/^["']|["']$/g, '');
+      if (name && families.indexOf(name) === -1 && /^[A-Za-z0-9 ]+$/.test(name)) families.push(name);
+    }
+    if (!families.length) return;
+    var href =
+      'https://fonts.googleapis.com/css2?' +
+      families.map(function (f) { return 'family=' + f.replace(/ /g, '+') + ':wght@400;500;600;700'; }).join('&') +
+      '&display=swap';
+    var link = ensure(doc, 'cms-fonts', 'link');
+    link.rel = 'stylesheet';
+    if (link.href !== href) link.href = href;
+  }
+
+  /**
+   * Resolve images against the live site, trying each candidate in turn.
+   *
+   * prepare-previews.mjs classifies each saved filename and writes its best
+   * guess as the src, with the alternatives in data-cms-fallbacks. A guess that
+   * misses simply moves to the next candidate here, so the preview shows real
+   * artwork without anyone having to be right first time. Only when every
+   * candidate fails does the token-styled placeholder appear.
+   */
+  function fixImages(doc) {
+    var imgs = doc.getElementsByTagName('img');
+    for (var i = 0; i < imgs.length; i++) {
+      (function (img) {
+        if (img.dataset.cmsChecked) return;
+        img.dataset.cmsChecked = '1';
+
+        var tryNext = function () {
+          var remaining = (img.dataset.cmsFallbacks || '').split(' ').filter(Boolean);
+          if (remaining.length > 0) {
+            img.dataset.cmsFallbacks = remaining.slice(1).join(' ');
+            img.src = remaining[0];
+            return;
+          }
+          // Out of candidates: stand in for it, and use the generic mark for
+          // brand logos so the slot reads as intentional rather than broken.
+          var looksLikeLogo = /logo/i.test(img.getAttribute('alt') || '') ||
+            /logo/i.test(img.getAttribute('src') || '');
+          if (looksLikeLogo && img.parentNode) {
+            var box = img.getBoundingClientRect();
+            var span = doc.createElement('span');
+            span.className = 'cms-logo';
+            span.style.height = box.height ? Math.round(box.height) + 'px' : 'auto';
+            span.style.fontSize = box.height ? Math.max(12, Math.round(box.height * 0.42)) + 'px' : '15px';
+            span.innerHTML = '<span class="cms-logo-mark"></span><span>BRAND</span>';
+            img.parentNode.replaceChild(span, img);
+            return;
+          }
+          img.classList.add('cms-missing-image');
+          img.src = 'data:image/svg+xml;charset=utf-8,' +
+            encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="9"/>');
+        };
+
+        img.addEventListener('error', tryNext);
+        if (img.complete && img.naturalWidth === 0) tryNext();
+      })(imgs[i]);
+    }
+  }
+
+  /**
+   * Give VIP Ticketing's footer.
+   *
+   * The footer transplants cleanly: it is self-contained, and Ticketing's is the
+   * one both products are converging on. The header does not — VIP's nav carries
+   * its own brand logo and account controls that Ticketing's header has no slot
+   * for, so grafting it loses more than it aligns. VIP keeps its own nav until
+   * the two are reconciled properly in code.
+   *
+   * Each lands inside a shadow root with Ticketing's own stylesheets attached.
+   * That isolation is the point: Tailwind's reset would otherwise flatten the
+   * Chakra page around it. Custom properties still cross the shadow boundary, so
+   * the transplanted chrome is driven by the tenant's tokens like everything else.
+   *
+   * In the products themselves this is a shared component, not a graft — but the
+   * preview can show what that would look like before the work lands.
+   */
+  var sharedChrome = null;
+
+  function loadSharedChrome() {
+    if (sharedChrome) return Promise.resolve(sharedChrome);
+    return fetch('ticketing.html')
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        var parsed = new DOMParser().parseFromString(text, 'text/html');
+        sharedChrome = {
+          header: parsed.querySelector('header'),
+          footer: parsed.querySelector('footer'),
+          styles: Array.prototype.map.call(
+            parsed.querySelectorAll('link[rel="stylesheet"]'),
+            function (l) { return l.getAttribute('href'); },
+          ),
+        };
+        return sharedChrome;
+      })
+      .catch(function () { return null; });
+  }
+
+  /** Climb from `el` to the first ancestor satisfying `test`. */
+  function ancestorWhere(el, test) {
+    var node = el;
+    while (node && node.parentElement && node.parentElement.tagName !== 'BODY') {
+      if (test(node)) return node;
+      node = node.parentElement;
+    }
+    return test(node) ? node : null;
+  }
+
+  function graft(doc, target, node, styles) {
+    if (!target || !node || !target.parentNode) return false;
+    var host = doc.createElement('div');
+    host.setAttribute('data-cms-shared-chrome', '');
+    target.parentNode.replaceChild(host, target);
+    var root = host.attachShadow({ mode: 'open' });
+    styles.forEach(function (href) {
+      var link = doc.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      root.appendChild(link);
+    });
+    root.appendChild(doc.importNode(node, true));
+    return true;
+  }
+
+  function unifyChrome(doc) {
+    if (product !== 'vip' || doc.querySelector('[data-cms-shared-chrome]')) return;
+    loadSharedChrome().then(function (chrome) {
+      if (!chrome || !chrome.footer) return;
+
+      // VIP's footer: the block around the footer logo carrying the copyright.
+      var footerLogo = doc.querySelector('img[src*="footerAirLogo"]');
+      var footer = footerLogo && ancestorWhere(footerLogo, function (n) {
+        return /all rights reserved/i.test(n.textContent || '');
+      });
+
+      if (graft(doc, footer, chrome.footer, chrome.styles)) {
+        setLive(true, 'live — using Ticketing footer');
+      }
+    });
+  }
+
+  /** Scope for the product-specific rules in fixups.css. */
+  function markProduct(doc) {
+    doc.documentElement.setAttribute('data-cms-product', product);
+  }
+
+  /** Normalising rules, appended last so they beat the page's own CSS. */
+  function injectFixups(doc) {
+    if (doc.getElementById('cms-fixups')) return;
+    var link = doc.createElement('link');
+    link.id = 'cms-fixups';
+    link.rel = 'stylesheet';
+    link.href = 'fixups.css';
+    head(doc).appendChild(link);
+  }
+
+  /**
+   * Background images point into the missing asset folder. Hero art comes from
+   * the CMS later, so a brand-tinted field stands in for it.
+   */
+  function fixBackgrounds(doc) {
+    var nodes = doc.querySelectorAll('[style*="background-image"]');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.dataset.cmsBg) continue;
+      if (el.getAttribute('style').indexOf('_files') === -1) continue;
+      el.dataset.cmsBg = '1';
+      el.style.backgroundImage = 'none';
+      el.classList.add('cms-hero-placeholder');
+    }
+  }
+
+  function apply() {
+    var doc = iframe.contentDocument;
+    if (!doc || !head(doc)) return;
+    markProduct(doc);
+    injectTokens(doc, currentCss);
+    injectFonts(doc, currentCss);
+    injectFixups(doc);
+    fixImages(doc);
+    fixBackgrounds(doc);
+    unifyChrome(doc);
+    // The stylesheet loads asynchronously; check once it can have applied.
+    setTimeout(function () { guardLayout(doc); }, 120);
+  }
+
+  /**
+   * Guard against fixups.css hiding something structural.
+   *
+   * These rules are cosmetic — removing widgets, standing in for assets. If the
+   * page has content but renders zero pixels tall, a selector matched more than
+   * it meant to, and showing the real page matters more than the tidying. Drop
+   * the stylesheet and say so rather than presenting a blank screen.
+   */
+  function guardLayout(doc) {
+    var body = doc.body;
+    if (!body || body.children.length === 0) return;
+    if (body.scrollHeight > 0) return;
+    var fixups = doc.getElementById('cms-fixups');
+    if (!fixups || fixups.dataset.disabled) return;
+    fixups.disabled = true;
+    fixups.dataset.disabled = '1';
+    if (doc.body.scrollHeight > 0) {
+      setLive(true, 'preview tidy-up disabled — it was hiding the page');
+    }
+  }
+
+  function setLive(on, text) {
+    document.getElementById('dot').className = 'dot' + (on ? '' : ' idle');
+    document.getElementById('liveText').textContent = text;
+  }
+
+  iframe.addEventListener('load', function () {
+    apply();
+    // Late-loading images (lazy, hydration) still get placeholders.
+    setTimeout(function () {
+      var doc = iframe.contentDocument;
+      if (!doc) return;
+      fixImages(doc);
+      fixBackgrounds(doc);
+    }, 900);
+    setLive(!!currentCss, currentCss ? 'live — connected to the Studio' : 'open Theme variables in the Studio');
+  });
+  iframe.src = FILE[product];
+
+  if ('BroadcastChannel' in window) {
+    var channel = new BroadcastChannel(CHANNEL);
+    channel.onmessage = function (event) {
+      var data = event.data || {};
+      if (!data.css) return;
+      if (data.tenant && tenant && data.tenant !== tenant) return;
+      currentCss = data.css;
+      try { localStorage.setItem(STORE, currentCss); } catch (e) {}
+      apply();
+      setLive(true, 'live — updated ' + new Date().toLocaleTimeString());
+    };
+  } else {
+    setLive(false, 'live updates need a modern browser');
+  }
+
+  document.getElementById('reload').addEventListener('click', function () { iframe.src = FILE[product]; });
+
+  /**
+   * Report what the preview can actually see.
+   *
+   * A blank or half-styled page has several possible causes — stylesheets that
+   * did not load, tokens that never arrived, colours that resolve to the same
+   * value for text and background. Guessing between them from a screenshot is
+   * slow; this answers it directly.
+   */
+  document.getElementById('diag').addEventListener('click', function () {
+    var out = document.getElementById('diagOut');
+    if (out.style.display === 'block') { out.style.display = 'none'; return; }
+    var doc = iframe.contentDocument;
+    var lines = [];
+    try {
+      var links = doc.querySelectorAll('link[rel="stylesheet"]');
+      lines.push('page          : ' + FILE[product] + '  (tenant: ' + (tenant || 'none') + ')');
+      lines.push('stylesheets   : ' + links.length + ' linked');
+      for (var i = 0; i < links.length; i++) {
+        var ok = false, rules = 0;
+        for (var j = 0; j < doc.styleSheets.length; j++) {
+          if (doc.styleSheets[j].href === links[i].href) {
+            ok = true;
+            try { rules = doc.styleSheets[j].cssRules.length; } catch (e) { rules = -1; }
+          }
+        }
+        lines.push('   ' + (ok ? 'LOADED' : 'FAILED') + '  ' + (rules >= 0 ? rules + ' rules  ' : 'blocked  ') +
+          links[i].href.replace(/^https?:\/\//, '').slice(0, 62));
+      }
+      lines.push('inline <style>: ' + doc.querySelectorAll('style').length);
+      lines.push('tokens applied: ' + (currentCss ? currentCss.split(';').length - 1 : 0) + ' declarations');
+      var body = doc.body;
+      var cs = iframe.contentWindow.getComputedStyle(body);
+      lines.push('body bg       : ' + cs.backgroundColor + '   text: ' + cs.color);
+      lines.push('body size     : ' + body.scrollWidth + ' x ' + body.scrollHeight + 'px');
+      lines.push('elements      : ' + doc.querySelectorAll('*').length +
+        '   visible text: ' + (body.innerText || '').trim().length + ' chars');
+      // Height 0 with content present means children contribute no height —
+      // list them with the properties that cause exactly that.
+      lines.push('');
+      lines.push('body children (display / position / height / children):');
+      var kids = body.children;
+      for (var c = 0; c < Math.min(kids.length, 10); c++) {
+        var k = kids[c];
+        var ks = iframe.contentWindow.getComputedStyle(k);
+        lines.push('   <' + k.tagName.toLowerCase() + ' class="' + (k.className || '').toString().slice(0, 26) +
+          '">  ' + ks.display + ' / ' + ks.position + ' / ' + Math.round(k.getBoundingClientRect().height) + 'px / ' +
+          k.children.length);
+      }
+      var probe = ['--color-surface-layer-page', '--color-text-icons-primary-default',
+                   '--color-control-secondary-default-bg-default', '--chakra-space-4', '--chakra-colors-gray-100'];
+      for (var k = 0; k < probe.length; k++) {
+        lines.push('var ' + probe[k] + ' = "' +
+          iframe.contentWindow.getComputedStyle(doc.documentElement).getPropertyValue(probe[k]).trim() + '"');
+      }
+    } catch (e) {
+      lines.push('could not inspect the frame: ' + e.message);
+    }
+    out.textContent = lines.join('\n');
+    out.style.display = 'block';
+  });
+  document.getElementById('width').addEventListener('change', function (e) {
+    iframe.style.width = e.target.value;
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+/* Preview fixups — deliberately minimal.
+ *
+ * The pages now load their real stylesheets from the live sites, so the styling
+ * is the styling. An earlier version of this file tried to normalise the nav,
+ * footer, hero and search across both products by hand; it fought the real CSS
+ * and made things worse. Anything that looks off should be fixed in the design
+ * system or the tokens, not papered over here.
+ *
+ * What remains is only what a static preview genuinely needs: hiding runtime
+ * widgets that have no session to talk to, and standing in for assets that are
+ * CMS-managed later.
+ */
+
+/* Runtime widgets with nothing to connect to in a preview. */
+#localize-widget,
+[id^='localize-'],
+#onetrust-consent-sdk,
+[id*='intercom'],
+[class*='intercom-'] {
+  display: none !important;
+}
+
+/* VIP's promo strip ("Use AIR SP to enter sweepstakes…").
+ *
+ * Target the strip itself (.css-1i7kigz), NOT its parent. The parent
+ * .css-1yv96yn is the page shell — it wraps 99% of the document — so hiding it
+ * blanks the entire preview. Emotion class hashes carry no meaning, so verify
+ * what a selector actually contains before hiding it. The height guard in
+ * index.html now catches this class of mistake automatically. */
+html[data-cms-product='vip'] .css-1i7kigz {
+  display: none !important;
+}
+
+/* Images whose files are not local. Real artwork is mapped from the CMS later;
+   a brand-tinted field reads better than a broken image box, and it is built
+   from tokens so it moves with the palette. */
+.cms-missing-image {
+  background:
+    linear-gradient(
+      135deg,
+      var(--color-surface-container-emphasized, #dfe4ea),
+      var(--color-surface-container-subtle, #eef1f4)
+    ) !important;
+  object-fit: cover;
+}
+
+/* Generic stand-in for brand marks, sized to the logo it replaces. */
+.cms-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  color: currentColor;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.cms-logo .cms-logo-mark {
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 5px;
+  background: currentColor;
+  opacity: 0.85;
+  flex: none;
+}
+
+
+/* ── Accent nav item ────────────────────────────────────────────────────────
+ *
+ * The CMS is the source of truth, so the accent link is mapped to its token
+ * here even though the shipped apps do not use it yet: Ticketing marks the item
+ * with .accent-nav-item but its stylesheet has no rule for it, and VIP colours
+ * the equivalent link through Chakra's own variables. Both are pointed at
+ * --color-text-icons-component-nav-items-level-1-accent-*, which is what the
+ * design system says should drive it.
+ *
+ * When the apps adopt the token, these rules become redundant rather than wrong.
+ */
+
+.accent-nav-item,
+.accent-nav-item .chakra-text,
+html[data-cms-product='vip'] .css-1ttttem,
+html[data-cms-product='vip'] .css-1ttttem .chakra-text {
+  color: var(--color-text-icons-component-nav-items-level-1-accent-default, currentColor) !important;
+}
+
+.accent-nav-item:hover,
+.accent-nav-item:hover .chakra-text,
+html[data-cms-product='vip'] .css-1ttttem:hover,
+html[data-cms-product='vip'] .css-1ttttem:hover .chakra-text {
+  color: var(--color-text-icons-component-nav-items-level-1-accent-hover,
+    var(--color-text-icons-component-nav-items-level-1-accent-default, currentColor)) !important;
+}

@@ -1,0 +1,140 @@
+/**
+ * Create the tenant documents and the universal-default singletons.
+ *
+ * Run once against a fresh dataset, before importing tokens — the token import
+ * matches each theme export to a tenant by Figma brand key, so the tenants have
+ * to exist first.
+ *
+ * Uses `createIfNotExists`, so re-running will not overwrite edits.
+ *
+ *   npm run seed
+ *   npm run seed -- --dry-run
+ */
+import { TENANT_SEED } from '../lib/constants.ts';
+import { defaultDocumentId, tenantDocumentId } from '../lib/documentIds.ts';
+import { requireSanityEnv } from './lib/env.ts';
+
+const DEFAULT_TYPES = ['experienceConfig', 'sharedContent'];
+
+/**
+ * Seed values for the universal default experience config.
+ *
+ * Taken from the Figma tenant-config collection and from what the current
+ * apps do, so that a tenant which overrides nothing still renders correctly.
+ * Deliberately conservative: anything genuinely tenant-specific (points name,
+ * support contacts) is left unset rather than guessed, so it shows up as
+ * missing rather than silently wrong.
+ */
+const DEFAULT_EXPERIENCE_CONFIG = {
+  products: { hasTicketing: true, hasVipExperiences: true, hasHotels: false, hasSweeps: false },
+  rewards: {
+    _type: 'rewardsConfig',
+    pointsName: 'PT',
+    pricingDisplay: 'moneyOrPoints',
+    vipPricingDisplay: 'moneyOrPoints',
+    showPointsEarning: true,
+    earningDisplay: 'points',
+  },
+  footer: {
+    _type: 'footerConfig',
+    supportPhone: { visible: true },
+    supportEmail: { visible: false },
+    sellerOfTravelCopy:
+      'Open Network Exchange Inc is registered with the State of Florida as a Seller of Travel. ' +
+      'Registration No. ST43055. Washington UBI 604 361 837. Hawaii TAR-7231. ' +
+      'California CST 2141600-50. Registration as a seller of travel in California does not constitute ' +
+      'approval by the State of California.',
+    trademarkCopy: '© 2026 Open Network Exchange Inc. All rights reserved.',
+    showDoNotSellLink: true,
+    poweredBy: 'spree',
+  },
+  payments: { _type: 'paymentConfig', allowPointsSpending: true, creditCard: true, crypto: false, cryptoCom: false },
+  onboarding: {
+    _type: 'onboardingConfig',
+    collectedFields: ['firstName', 'surname', 'email', 'phone', 'dateOfBirth', 'country', 'marketingOptIn', 'termsOptIn'],
+  },
+};
+
+/** Shared copy that is currently duplicated inline across both apps. */
+const DEFAULT_SHARED_CONTENT = {
+  entries: [
+    { key: 'emptyState.noEvents', value: 'No events have been found', notes: 'Search and browse results.' },
+    { key: 'emptyState.noTickets', value: 'No tickets right now. Working to get more.', notes: 'Event detail page.' },
+    { key: 'emptyState.noResults', value: 'No results found', notes: 'Search dropdown.' },
+    {
+      key: 'emptyState.noPurchases',
+      value: 'You have not purchased any tickets yet. Explore events to get started.',
+      notes: 'Account purchase history.',
+    },
+    { key: 'error.generic.title', value: 'Oops! Something went wrong', notes: 'Route error boundaries.' },
+    {
+      key: 'error.generic.body',
+      value: "We're having trouble loading this page right now. Please try again.",
+      notes: 'Route error boundaries.',
+    },
+    { key: 'error.notFound.title', value: '404', notes: 'not-found page.' },
+    {
+      key: 'error.notFound.body',
+      value: 'Sorry, the page you are looking for does not exist.',
+      notes: 'not-found page.',
+    },
+    { key: 'search.placeholder', value: 'Search by artist, event or venue', notes: 'Global search bar.' },
+    { key: 'action.showMore', value: 'Show more' },
+    { key: 'action.signUp', value: 'Sign Up' },
+    { key: 'action.signIn', value: 'Sign In' },
+  ].map((entry, index) => ({ _type: 'copyEntry', _key: `copy-${index}`, visible: true, ...entry })),
+};
+
+async function main(): Promise<void> {
+  const dryRun = process.argv.includes('--dry-run');
+
+  const documents: Array<Record<string, unknown>> = [
+    ...TENANT_SEED.map((tenant) => ({
+      _id: tenantDocumentId(tenant.slug),
+      _type: 'tenant',
+      title: tenant.title,
+      slug: { _type: 'slug', current: tenant.slug },
+      figmaBrandKey: tenant.figmaBrandKey,
+      domain: tenant.domain,
+      active: true,
+      enabledProducts: ['ticketing'],
+    })),
+    {
+      _id: defaultDocumentId('experienceConfig'),
+      _type: 'experienceConfig',
+      ...DEFAULT_EXPERIENCE_CONFIG,
+    },
+    {
+      _id: defaultDocumentId('sharedContent'),
+      _type: 'sharedContent',
+      ...DEFAULT_SHARED_CONTENT,
+    },
+  ];
+
+  if (dryRun) {
+    for (const doc of documents) console.log(`  would create ${doc._id}  (${doc._type})`);
+    console.log(`\nDry run — ${documents.length} document(s), nothing written.`);
+    console.log(`Default types: ${DEFAULT_TYPES.join(', ')}`);
+    return;
+  }
+
+  const { projectId, dataset, token } = requireSanityEnv();
+
+  const { createClient } = await import('@sanity/client');
+  const client = createClient({ projectId, dataset, apiVersion: '2024-10-01', token, useCdn: false });
+
+  console.log(`Seeding ${projectId} / ${dataset}\n`);
+
+  // createIfNotExists in a single transaction: re-running is safe and never
+  // clobbers an editor's work.
+  const transaction = documents.reduce((tx, doc) => tx.createIfNotExists(doc as never), client.transaction());
+  await transaction.commit();
+
+  for (const doc of documents) console.log(`  ✓ ${doc._id}`);
+  console.log(`\n${documents.length} document(s) ensured. Next: npm run tokens:import`);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

@@ -1,0 +1,53 @@
+# Deploy the Studio on every push to main.
+#
+# This is the point of moving the source into a repo: nobody needs the project
+# on their machine, and nobody runs `sanity deploy` by hand. Merge a change and
+# the hosted Studio updates.
+#
+# One secret is required — Settings → Secrets and variables → Actions:
+#
+#   SANITY_AUTH_TOKEN   a token from sanity.io/manage with "Deploy Studio"
+#                       permission on project gkcb4giq
+#
+# Content is untouched by this: documents live in Sanity and are shared by every
+# build. A deploy only replaces the Studio's code.
+name: Deploy Studio
+
+on:
+  push:
+    branches: [main]
+  # Lets you deploy from the Actions tab without pushing a commit.
+  workflow_dispatch:
+
+concurrency:
+  # A newer push supersedes an in-flight deploy rather than racing it.
+  group: deploy-studio
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check the token pipeline still holds
+        # The suites that guarantee published CSS matches what the apps expect.
+        # A schema change should never break these; if it does, stop here rather
+        # than deploying a Studio that publishes wrong output.
+        run: npm test
+        continue-on-error: false
+
+      - name: Deploy
+        env:
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_AUTH_TOKEN }}
+          SANITY_STUDIO_PROJECT_ID: gkcb4giq
+          SANITY_STUDIO_DATASET: production
+        run: npx sanity deploy

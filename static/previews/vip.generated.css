@@ -1,0 +1,10 @@
+/* Superseded and no longer loaded.
+
+   The preview pages now load their real stylesheets from the live sites
+   (see scripts/prepare-previews.mjs), which is both more accurate and
+   self-maintaining. This file was a hand-rebuilt approximation of Tailwind
+   from the page's class list; it is kept only so nothing 404s if an older
+   preview tab is still open. Safe to delete.
+
+   scripts/build-preview-css.mjs can regenerate it if the live assets ever
+   become unreachable. */

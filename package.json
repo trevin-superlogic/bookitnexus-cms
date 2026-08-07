@@ -1,0 +1,39 @@
+{
+  "name": "@superlogic/bookit-cms",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Multi-tenant Sanity CMS for Superlogic tenant configuration, theme tokens and product content.",
+  "scripts": {
+    "setup": "bash setup.sh",
+    "dev": "sanity dev",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "start": "sanity start",
+    "test": "npm run test:tokens && npm run test:resolve",
+    "test:tokens": "node --experimental-strip-types lib/tokens/translate.test.ts && node --experimental-strip-types lib/tokens/validate.test.ts && node --experimental-strip-types lib/tokens/compat.test.ts",
+    "test:resolve": "node --experimental-strip-types lib/resolve/inheritance.test.ts",
+    "tokens:manifest": "node --experimental-strip-types scripts/build-token-manifest.ts",
+    "tokens:drift": "node --experimental-strip-types lib/tokens/drift.test.ts",
+    "tokens:propose-aliases": "node --experimental-strip-types scripts/propose-compat-aliases.ts",
+    "tokens:import": "node --experimental-strip-types scripts/import-figma-tokens.ts",
+    "seed": "node --experimental-strip-types scripts/seed-tenants.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sanity/vision": "^3.62.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sanity": "^3.62.0",
+    "styled-components": "^6.1.13"
+  },
+  "devDependencies": {
+    "@sanity/client": "^6.22.0",
+    "@types/node": "^22.7.0",
+    "@types/react": "^18.3.11",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=22.6.0"
+  }
+}

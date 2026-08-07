@@ -1,0 +1,25 @@
+# Dependencies — restored by `npm install`, never committed.
+node_modules/
+
+# Build output.
+dist/
+.sanity/
+
+# Secrets. .env.example is committed as the template; the real values are not.
+.env
+.env.local
+.env.*.local
+
+# Dataset exports. These contain a full copy of the content, including drafts —
+# useful for a migration, not something to keep in version control.
+*.tar.gz
+
+# Generated CSS. Written by scripts/; the tokens in Sanity are the source.
+generated-css/
+
+# OS and editor noise.
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
