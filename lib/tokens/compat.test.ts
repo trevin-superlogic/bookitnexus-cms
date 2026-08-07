@@ -11,7 +11,7 @@
  *
  *   node --experimental-strip-types lib/tokens/compat.test.ts
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { flattenTokens } from './flatten.ts';
@@ -21,9 +21,14 @@ import { generateCompatBlock, DEFAULT_COMPAT_ALIASES, proposeAliases, toAliasMap
 import { validateOutput, type TokenManifest } from './validate.ts';
 import type { FigmaTokenTree } from './types.ts';
 
-const THEME_EXPORTS = process.env.THEME_EXPORTS ?? '/home/claude/tokens/theme_brand';
-const MANIFEST = process.env.MANIFEST ?? '/home/claude/superlogic-cms/schemas/tokens/required-tokens.json';
-const UI_THEME_DIR = process.env.UI_THEME_DIR ?? '/home/claude/repo/superlogic-ui-main/apps/live-tickets/src/theme';
+const REPO_ROOT = join(import.meta.dirname, '..', '..');
+const THEME_EXPORTS = process.env.THEME_EXPORTS ?? join(REPO_ROOT, 'figma-exports', 'theme');
+const MANIFEST = process.env.MANIFEST ?? join(REPO_ROOT, 'schemas', 'tokens', 'required-tokens.json');
+// Only used for the alias-proposal check below, which diffs the new export against
+// the *pre-migration* committed CSS. That reference lives in a superlogic-ui
+// checkout; set UI_THEME_DIR to one to run the check. It is skipped when unset or
+// absent (e.g. in CI), because no in-repo (post-migration) CSS can satisfy it.
+const UI_THEME_DIR = process.env.UI_THEME_DIR;
 
 const manifest = JSON.parse(readFileSync(MANIFEST, 'utf-8')) as TokenManifest;
 
@@ -158,16 +163,24 @@ expect(
 
 console.log('\nAlias proposals for review:\n');
 
-const committed = readFileSync(join(UI_THEME_DIR, 'bookit', 'bookit.figma.css'), 'utf-8');
-const committedVars = [...committed.matchAll(/^\s*(--[a-z0-9-]+):/gm)].map((m) => m[1]);
-const removed = committedVars.filter((v) => !published.has(v));
-const added = [...published].filter((v) => !committedVars.includes(v));
-const proposals = proposeAliases(removed, added);
+const committedCssPath = UI_THEME_DIR ? join(UI_THEME_DIR, 'bookit', 'bookit.figma.css') : '';
+if (!committedCssPath || !existsSync(committedCssPath)) {
+  // Requires the pre-migration superlogic-ui CSS; nothing in the repo can stand in
+  // for it (in-repo CSS is already post-migration, so 0 renames is correct there).
+  // Not a pass or a fail — just not exercised here.
+  console.log('  ⊘ skipped — set UI_THEME_DIR to a superlogic-ui checkout to run the alias-proposal check');
+} else {
+  const committed = readFileSync(committedCssPath, 'utf-8');
+  const committedVars = [...committed.matchAll(/^\s*(--[a-z0-9-]+):/gm)].map((m) => m[1]);
+  const removed = committedVars.filter((v) => !published.has(v));
+  const added = [...published].filter((v) => !committedVars.includes(v));
+  const proposals = proposeAliases(removed, added);
 
-expect(`proposed ${proposals.length} mapping(s) for ${removed.length} removed variable(s)`, proposals.length > 0);
-for (const p of proposals.slice(0, 8)) console.log(`      ${p.from}\n        → ${p.to}${p.reason ? `  (${p.reason})` : ''}`);
-const unproposed = removed.filter((r) => !proposals.some((p) => p.from === r));
-if (unproposed.length) console.log(`      no candidate for: ${unproposed.join(', ')}`);
+  expect(`proposed ${proposals.length} mapping(s) for ${removed.length} removed variable(s)`, proposals.length > 0);
+  for (const p of proposals.slice(0, 8)) console.log(`      ${p.from}\n        → ${p.to}${p.reason ? `  (${p.reason})` : ''}`);
+  const unproposed = removed.filter((r) => !proposals.some((p) => p.from === r));
+  if (unproposed.length) console.log(`      no candidate for: ${unproposed.join(', ')}`);
+}
 
 console.log(`\n${assertions - failed}/${assertions} assertions passed.`);
 process.exit(failed === 0 ? 0 : 1);

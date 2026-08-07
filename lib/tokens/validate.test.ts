@@ -17,8 +17,9 @@ import { buildThemeVarLines } from './translate.ts';
 import { validateOutput, validateSource, type TokenManifest } from './validate.ts';
 import type { FigmaTokenTree } from './types.ts';
 
-const THEME_EXPORTS = process.env.THEME_EXPORTS ?? '/home/claude/tokens/theme_brand';
-const MANIFEST = process.env.MANIFEST ?? '/home/claude/superlogic-cms/schemas/tokens/required-tokens.json';
+const REPO_ROOT = join(import.meta.dirname, '..', '..');
+const THEME_EXPORTS = process.env.THEME_EXPORTS ?? join(REPO_ROOT, 'figma-exports', 'theme');
+const MANIFEST = process.env.MANIFEST ?? join(REPO_ROOT, 'schemas', 'tokens', 'required-tokens.json');
 
 const manifest = JSON.parse(readFileSync(MANIFEST, 'utf-8')) as TokenManifest;
 

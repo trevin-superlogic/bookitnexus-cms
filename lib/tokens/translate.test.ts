@@ -26,8 +26,15 @@ import { flattenTokens } from './flatten.ts';
 import { aliasBrand, brandKeyToSlug } from './naming.ts';
 import type { FigmaTokenTree } from './types.ts';
 
-const THEME_EXPORTS = process.env.THEME_EXPORTS ?? '/home/claude/tokens/theme_brand';
-const UI_THEME_DIR = process.env.UI_THEME_DIR ?? '/home/claude/repo/superlogic-ui-main/apps/live-tickets/src/theme';
+const REPO_ROOT = join(import.meta.dirname, '..', '..');
+// The Figma theme exports are vendored in the repo, so this default works in CI
+// and on a fresh clone. Override THEME_EXPORTS to test against a different set.
+const THEME_EXPORTS = process.env.THEME_EXPORTS ?? join(REPO_ROOT, 'figma-exports', 'theme');
+// The committed CSS to compare against lives in a superlogic-ui checkout, which is
+// deliberately not vendored here. `generated-css/` (gitignored, produced locally)
+// is a working stand-in; point UI_THEME_DIR at a real checkout for the true parity
+// check. When neither is present — as in CI — each tenant is skipped below, not failed.
+const UI_THEME_DIR = process.env.UI_THEME_DIR ?? join(REPO_ROOT, 'generated-css');
 
 /** Theme export filenames don't always match the app's tenant directory name. */
 const SLUG_ALIASES: Record<string, string> = {
@@ -148,5 +155,15 @@ for (const file of readdirSync(THEME_EXPORTS).filter((f) => f.endsWith('.tokens.
   }
 }
 
-console.log(`\n${checked - failures - EXPECTED_REDESIGN.size}/${checked - EXPECTED_REDESIGN.size} tenants reproduce committed values exactly (${EXPECTED_REDESIGN.size} expected redesign).`);
+if (checked === 0) {
+  console.log(
+    '\nNo committed CSS found — parity comparison skipped. Set UI_THEME_DIR to a ' +
+      'superlogic-ui checkout (or generate generated-css) to run it.',
+  );
+} else {
+  console.log(
+    `\n${checked - failures - EXPECTED_REDESIGN.size}/${checked - EXPECTED_REDESIGN.size} ` +
+      `tenants reproduce committed values exactly (${EXPECTED_REDESIGN.size} expected redesign).`,
+  );
+}
 process.exit(failures === 0 ? 0 : 1);
