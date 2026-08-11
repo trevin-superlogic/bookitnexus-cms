@@ -14,7 +14,15 @@ import { TENANT_SEED } from '../lib/constants.ts';
 import { defaultDocumentId, tenantDocumentId } from '../lib/documentIds.ts';
 import { requireSanityEnv } from './lib/env.ts';
 
-const DEFAULT_TYPES = ['experienceConfig', 'sharedContent'];
+const DEFAULT_TYPES = [
+  'experienceConfig',
+  'siteSettings',
+  'siteNavigation',
+  'paymentSettings',
+  'sharedCopy',
+  'legalDocument',
+  'sharedContent',
+];
 
 /**
  * Seed values for the universal default experience config.
@@ -85,6 +93,58 @@ const DEFAULT_SHARED_CONTENT = {
   ].map((entry, index) => ({ _type: 'copyEntry', _key: `copy-${index}`, visible: true, ...entry })),
 };
 
+const DEFAULT_SITE_SETTINGS = {
+  metadata: {
+    _type: 'siteMetadata',
+    title: 'Bookit',
+    titleTemplate: '%s | Bookit',
+    description: 'Discover tickets, stays, and memorable experiences.',
+    noIndex: false,
+  },
+};
+
+const DEFAULT_SITE_NAVIGATION = {
+  variant: 'nexus',
+  nexus: {
+    _type: 'nexusNavbar',
+    auth: {
+      _type: 'authControls',
+      showSignIn: true,
+      signInLabel: 'Sign In',
+      signedInLabel: 'My Account',
+    },
+  },
+  footer: {
+    _type: 'footerChrome',
+    support: DEFAULT_EXPERIENCE_CONFIG.footer,
+  },
+};
+
+const DEFAULT_PAYMENT_SETTINGS = {
+  methods: DEFAULT_EXPERIENCE_CONFIG.payments,
+  widget: {
+    _type: 'spreePayWidget',
+    allowPointsSpending: true,
+    creditCardPayment: true,
+    cryptoPayment: false,
+    cdcPayment: false,
+    widgetTitle: 'How would you like to pay?',
+  },
+};
+
+const DEFAULT_SHARED_COPY = {
+  title: 'Global UI copy',
+  feature: 'global',
+  entries: DEFAULT_SHARED_CONTENT.entries,
+};
+
+const LEGAL_ROUTES = [
+  { slug: '/terms', title: 'Terms' },
+  { slug: '/privacy-policy', title: 'Privacy policy' },
+  { slug: '/accessibility', title: 'Accessibility' },
+  { slug: '/cookie-policy', title: 'Cookie policy' },
+];
+
 async function main(): Promise<void> {
   const dryRun = process.argv.includes('--dry-run');
 
@@ -109,6 +169,49 @@ async function main(): Promise<void> {
       _type: 'sharedContent',
       ...DEFAULT_SHARED_CONTENT,
     },
+    {
+      _id: defaultDocumentId('siteSettings'),
+      _type: 'siteSettings',
+      ...DEFAULT_SITE_SETTINGS,
+    },
+    {
+      _id: defaultDocumentId('siteNavigation'),
+      _type: 'siteNavigation',
+      ...DEFAULT_SITE_NAVIGATION,
+    },
+    {
+      _id: defaultDocumentId('paymentSettings'),
+      _type: 'paymentSettings',
+      ...DEFAULT_PAYMENT_SETTINGS,
+    },
+    {
+      _id: defaultDocumentId('sharedCopy'),
+      _type: 'sharedCopy',
+      ...DEFAULT_SHARED_COPY,
+    },
+    ...LEGAL_ROUTES.map(({ slug, title }) => ({
+      _id: `${defaultDocumentId('legalDocument')}.${slug.slice(1)}`,
+      _type: 'legalDocument',
+      visible: false,
+      slug,
+      title,
+      body: [
+        {
+          _type: 'block',
+          _key: 'placeholder',
+          style: 'normal',
+          markDefs: [],
+          children: [
+            {
+              _type: 'span',
+              _key: 'text',
+              marks: [],
+              text: 'Add the approved legal content before making this page visible.',
+            },
+          ],
+        },
+      ],
+    })),
   ];
 
   if (dryRun) {

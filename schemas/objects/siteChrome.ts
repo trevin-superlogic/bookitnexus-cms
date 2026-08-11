@@ -188,21 +188,30 @@ export const navbarConfig = defineType({
   fields: [
     defineField({
       name: 'variant',
-      title: 'Which navbar does this tenant run?',
+      title: 'Navigation model',
       type: 'string',
       description:
         'Picks the bar the apps render. Both can be configured — useful while a tenant is mid-migration — but ' +
         `only the selected one ships. ${INHERITS}`,
       options: {
         list: [
-          { title: 'Bookit Nexus (simplified)', value: 'nexus' },
-          { title: 'Legacy (multi-level)', value: 'legacy' },
+          { title: 'Bookit Nexus', value: 'nexus' },
+          { title: 'Legacy', value: 'legacy' },
         ],
-        layout: 'radio',
       },
     }),
-    defineField({ name: 'nexus', title: 'Bookit Nexus navbar', type: 'nexusNavbar' }),
-    defineField({ name: 'legacy', title: 'Legacy navbar', type: 'legacyNavbar' }),
+    defineField({
+      name: 'nexus',
+      title: 'Bookit Nexus navbar',
+      type: 'nexusNavbar',
+      hidden: ({ parent }) => parent?.variant !== 'nexus',
+    }),
+    defineField({
+      name: 'legacy',
+      title: 'Legacy navbar',
+      type: 'legacyNavbar',
+      hidden: ({ parent }) => parent?.variant !== 'legacy',
+    }),
   ],
 });
 
