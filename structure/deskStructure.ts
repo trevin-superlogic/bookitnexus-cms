@@ -5,7 +5,13 @@
  *     └── <Tenant>
  *          ├── Tenant Configuration
  *          ├── Theme & style tokens
- *          ├── Shared content   (navbar · footer · metadata · SpreePay · copy)
+ *          ├── Shared content
+ *          │    ├── Site settings
+ *          │    ├── Navigation & footer
+ *          │    ├── Payment settings
+ *          │    ├── Shared copy
+ *          │    ├── Legal documents
+ *          │    └── Legacy shared content
  *          └── Product content
  *               ├── Ticketing → shared copy + pages
  *               ├── VIP       → shared copy + pages
@@ -31,14 +37,6 @@ import { defaultDocumentId } from '../lib/documentIds';
 import { tenantScopedTemplateId } from '../schemas/templates';
 
 const FOUNDATION_ID = 'foundationTokens.singleton';
-
-/** Types that exist as both a universal default and per-tenant overrides. */
-const SCOPED_TYPES = [
-  { type: 'experienceConfig', title: 'Tenant Configuration' },
-  { type: 'siteSettings', title: 'Site settings' },
-  { type: 'siteNavigation', title: 'Navigation & footer' },
-  { type: 'paymentSettings', title: 'Payment settings' },
-] as const;
 
 const singleton = (S: StructureBuilder, schemaType: string, title: string) =>
   S.listItem()
@@ -72,6 +70,62 @@ const tenantDocument = (
         )
         .canHandleIntent(() => true)
         .apiVersion('2024-10-01'),
+    );
+
+/** Cross-platform content grouped into one compact, editor-facing branch. */
+const sharedContentBranch = (S: StructureBuilder, tenantId: string) =>
+  S.listItem()
+    .title('Shared content')
+    .id('sharedContent')
+    .child(
+      S.list()
+        .title('Shared content')
+        .items([
+          tenantDocument(S, 'siteSettings', 'Site settings', tenantId, true),
+          tenantDocument(S, 'siteNavigation', 'Navigation & footer', tenantId, true),
+          tenantDocument(S, 'paymentSettings', 'Payment settings', tenantId, true),
+          tenantDocument(S, 'sharedCopy', 'Shared copy', tenantId, true),
+          tenantDocument(S, 'legalDocument', 'Legal documents', tenantId, true),
+          S.divider(),
+          tenantDocument(S, 'sharedContent', 'Legacy shared content', tenantId),
+        ]),
+    );
+
+/** Universal cross-platform defaults use the same hierarchy as each tenant. */
+const sharedContentDefaultsBranch = (S: StructureBuilder) =>
+  S.listItem()
+    .title('Shared content')
+    .id('sharedContentDefaults')
+    .child(
+      S.list()
+        .title('Shared content defaults')
+        .items([
+          singleton(S, 'siteSettings', 'Site settings'),
+          singleton(S, 'siteNavigation', 'Navigation & footer'),
+          singleton(S, 'paymentSettings', 'Payment settings'),
+          S.listItem()
+            .title('Shared copy')
+            .id('sharedCopyDefaults')
+            .child(
+              S.documentList()
+                .title('Shared copy defaults')
+                .schemaType('sharedCopy')
+                .filter('_type == "sharedCopy" && !defined(tenant)')
+                .apiVersion('2024-10-01'),
+            ),
+          S.listItem()
+            .title('Legal documents')
+            .id('legalDocumentDefaults')
+            .child(
+              S.documentList()
+                .title('Legal document defaults')
+                .schemaType('legalDocument')
+                .filter('_type == "legalDocument" && !defined(tenant)')
+                .apiVersion('2024-10-01'),
+            ),
+          S.divider(),
+          singleton(S, 'sharedContent', 'Legacy shared content'),
+        ]),
     );
 
 const productBranch = (S: StructureBuilder, tenantId: string) =>
@@ -170,14 +224,8 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
                         .params({ tenantId })
                         .apiVersion('2024-10-01'),
                     ),
-                  tenantDocument(S, 'siteSettings', 'Site settings', tenantId, true),
-                  tenantDocument(S, 'siteNavigation', 'Navigation & footer', tenantId, true),
-                  tenantDocument(S, 'paymentSettings', 'Payment settings', tenantId, true),
-                  tenantDocument(S, 'sharedCopy', 'Shared copy', tenantId, true),
-                  tenantDocument(S, 'legalDocument', 'Legal documents', tenantId, true),
+                  sharedContentBranch(S, tenantId),
                   productBranch(S, tenantId),
-                  S.divider(),
-                  tenantDocument(S, 'sharedContent', 'Shared content (legacy)', tenantId),
                 ]),
             ),
         ),
@@ -191,28 +239,9 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
           S.list()
             .title('Universal defaults')
             .items([
-              ...SCOPED_TYPES.map(({ type, title }) => singleton(S, type, title)),
-              S.listItem()
-                .title('Shared copy')
-                .id('sharedCopyDefaults')
-                .child(
-                  S.documentList()
-                    .title('Shared copy defaults')
-                    .schemaType('sharedCopy')
-                    .filter('_type == "sharedCopy" && !defined(tenant)')
-                    .apiVersion('2024-10-01'),
-                ),
-              S.listItem()
-                .title('Legal documents')
-                .id('legalDocumentDefaults')
-                .child(
-                  S.documentList()
-                    .title('Legal document defaults')
-                    .schemaType('legalDocument')
-                    .filter('_type == "legalDocument" && !defined(tenant)')
-                    .apiVersion('2024-10-01'),
-                ),
+              singleton(S, 'experienceConfig', 'Tenant Configuration'),
               singleton(S, 'brandTheme', 'Theme & style tokens'),
+              sharedContentDefaultsBranch(S),
               S.listItem()
                 .title('Product content defaults')
                 .id('productContentDefaults')
@@ -233,8 +262,6 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
                     .filter('_type == "pageContent" && !defined(tenant)')
                     .apiVersion('2024-10-01'),
                 ),
-              S.divider(),
-              singleton(S, 'sharedContent', 'Shared content (legacy)'),
             ]),
         ),
 
