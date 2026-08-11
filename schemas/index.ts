@@ -4,6 +4,7 @@ import { brand, brandRole } from './documents/brand';
 import { brandTheme, foundationTokens } from './documents/brandTheme';
 import { copyEntry, pageContent, productContent, sharedContent } from './documents/content';
 import { experienceConfig } from './documents/experienceConfig';
+import { legalDocument, paymentSettings, sharedCopy, siteNavigation, siteSettings } from './documents/siteContent';
 import { tenant } from './documents/tenant';
 import { brandAssets, seoConfig } from './objects/brand';
 import { onboardingConfig, onboardingSlide, paymentConfig, topUpConfig, topUpTile } from './objects/commerce';
@@ -31,6 +32,11 @@ export const schemaTypes: SchemaTypeDefinition[] = [
   brandTheme,
   foundationTokens,
   sharedContent,
+  siteSettings,
+  siteNavigation,
+  paymentSettings,
+  legalDocument,
+  sharedCopy,
   productContent,
   pageContent,
 

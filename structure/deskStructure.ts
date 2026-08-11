@@ -28,13 +28,16 @@ import { BrandBoard } from '../components/BrandBoard';
 
 import { PRODUCTS } from '../lib/constants';
 import { defaultDocumentId } from '../lib/documentIds';
+import { tenantScopedTemplateId } from '../schemas/templates';
 
 const FOUNDATION_ID = 'foundationTokens.singleton';
 
 /** Types that exist as both a universal default and per-tenant overrides. */
 const SCOPED_TYPES = [
   { type: 'experienceConfig', title: 'Tenant Configuration' },
-  { type: 'sharedContent', title: 'Shared content' },
+  { type: 'siteSettings', title: 'Site settings' },
+  { type: 'siteNavigation', title: 'Navigation & footer' },
+  { type: 'paymentSettings', title: 'Payment settings' },
 ] as const;
 
 const singleton = (S: StructureBuilder, schemaType: string, title: string) =>
@@ -44,7 +47,13 @@ const singleton = (S: StructureBuilder, schemaType: string, title: string) =>
     .child(S.document().schemaType(schemaType).documentId(defaultDocumentId(schemaType)).title(title));
 
 /** Documents of `type` scoped to one tenant. Creates one on demand if absent. */
-const tenantDocument = (S: StructureBuilder, schemaType: string, title: string, tenantId: string) =>
+const tenantDocument = (
+  S: StructureBuilder,
+  schemaType: string,
+  title: string,
+  tenantId: string,
+  useTenantTemplate = false,
+) =>
   S.listItem()
     .title(title)
     .id(schemaType)
@@ -56,7 +65,11 @@ const tenantDocument = (S: StructureBuilder, schemaType: string, title: string, 
         .params({ type: schemaType, tenantId })
         // New documents created from here are pre-linked to the tenant, so an
         // override cannot be saved pointing at the wrong one.
-        .initialValueTemplates([])
+        .initialValueTemplates(
+          useTenantTemplate
+            ? [S.initialValueTemplateItem(tenantScopedTemplateId(schemaType), { tenantId })]
+            : [],
+        )
         .canHandleIntent(() => true)
         .apiVersion('2024-10-01'),
     );
@@ -157,8 +170,14 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
                         .params({ tenantId })
                         .apiVersion('2024-10-01'),
                     ),
-                  tenantDocument(S, 'sharedContent', 'Shared content', tenantId),
+                  tenantDocument(S, 'siteSettings', 'Site settings', tenantId, true),
+                  tenantDocument(S, 'siteNavigation', 'Navigation & footer', tenantId, true),
+                  tenantDocument(S, 'paymentSettings', 'Payment settings', tenantId, true),
+                  tenantDocument(S, 'sharedCopy', 'Shared copy', tenantId, true),
+                  tenantDocument(S, 'legalDocument', 'Legal documents', tenantId, true),
                   productBranch(S, tenantId),
+                  S.divider(),
+                  tenantDocument(S, 'sharedContent', 'Shared content (legacy)', tenantId),
                 ]),
             ),
         ),
@@ -173,6 +192,26 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
             .title('Universal defaults')
             .items([
               ...SCOPED_TYPES.map(({ type, title }) => singleton(S, type, title)),
+              S.listItem()
+                .title('Shared copy')
+                .id('sharedCopyDefaults')
+                .child(
+                  S.documentList()
+                    .title('Shared copy defaults')
+                    .schemaType('sharedCopy')
+                    .filter('_type == "sharedCopy" && !defined(tenant)')
+                    .apiVersion('2024-10-01'),
+                ),
+              S.listItem()
+                .title('Legal documents')
+                .id('legalDocumentDefaults')
+                .child(
+                  S.documentList()
+                    .title('Legal document defaults')
+                    .schemaType('legalDocument')
+                    .filter('_type == "legalDocument" && !defined(tenant)')
+                    .apiVersion('2024-10-01'),
+                ),
               singleton(S, 'brandTheme', 'Theme & style tokens'),
               S.listItem()
                 .title('Product content defaults')
@@ -194,6 +233,8 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
                     .filter('_type == "pageContent" && !defined(tenant)')
                     .apiVersion('2024-10-01'),
                 ),
+              S.divider(),
+              singleton(S, 'sharedContent', 'Shared content (legacy)'),
             ]),
         ),
 

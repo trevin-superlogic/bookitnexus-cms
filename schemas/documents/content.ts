@@ -4,7 +4,7 @@
  * Three levels, each a separate document per the PDP's "focused documents that
  * reference the tenant, not one large document":
  *
- *   sharedContent   site-wide copy — empty states, errors, legal, search
+ *   sharedContent   legacy site-wide content retained for compatibility
  *   productContent  copy shared across one product's pages
  *   pageContent     copy for one route
  *
@@ -82,11 +82,11 @@ export const copyEntry = defineType({
 
 export const sharedContent = defineType({
   name: 'sharedContent',
-  title: 'Shared content',
+  title: 'Shared content (legacy)',
   type: 'document',
   description:
-    'Everything that appears on every page: the navbar, the footer, head metadata, the payment widget, and ' +
-    'site-wide copy. Each section is empty by default and inherits from Universal defaults.',
+    'Deprecated compatibility model. Use Site settings, Navigation & footer, Payment settings, Shared copy, ' +
+    'and Legal documents for new edits. Existing frontend consumers can continue reading these fields.',
   groups: [
     { name: 'navbar', title: 'Navbar', default: true },
     { name: 'footer', title: 'Footer' },
@@ -173,7 +173,7 @@ export const sharedContent = defineType({
   preview: {
     select: { tenantTitle: 'tenant.title', id: '_id', entries: 'entries' },
     prepare: ({ tenantTitle, id, entries }) => ({
-      title: 'Shared content',
+      title: 'Shared content (legacy)',
       subtitle: `${scopePreview(id, tenantTitle)} · ${(entries ?? []).length} entries`,
     }),
   },
