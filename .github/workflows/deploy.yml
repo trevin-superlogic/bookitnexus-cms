@@ -50,4 +50,5 @@ jobs:
           SANITY_AUTH_TOKEN: ${{ secrets.SANITY_AUTH_TOKEN }}
           SANITY_STUDIO_PROJECT_ID: gkcb4giq
           SANITY_STUDIO_DATASET: production
+          SANITY_STUDIO_HOSTNAME: bookitnexus
         run: npx sanity deploy
