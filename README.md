@@ -110,25 +110,12 @@ lib/tokens/        translation + validation. No Sanity imports — the same code
   compat.ts        old → new variable aliases
   pipeline.ts      the four PDP publish steps, in order
 lib/resolve/       universal default + tenant override merging
-schemas/           document and object types
+schemas/           tenant configuration, cross-modality shared content,
+                   modality content, pages, brand, and theme types
 actions/           the publish gate
 queries/           GROQ + resolveTenantBundle()
 scripts/           manifest builder, importer, seeder, alias proposer
 ```
-
-### Focused site-wide settings
-
-Each tenant and the Universal defaults section expose focused documents for the settings editors use most often:
-
-- **Site settings** — metadata, icons, social defaults, and search visibility
-- **Navigation & footer** — the Bookit Nexus or Legacy navigation model, its saved configuration, and footer content
-- **Payment settings** — payment-method display toggles and SpreePay widget content
-- **Shared copy** — reusable keyed copy grouped by a stable product or feature key
-- **Legal documents** — one document per supported legal route
-
-Changing the navigation model only changes which fields the Studio shows; it does not remove the saved configuration
-for the other model. The former `sharedContent` document remains available as **Shared content (legacy)** so existing
-consumers remain compatible, but new site-wide edits should use the focused documents above.
 
 ---
 

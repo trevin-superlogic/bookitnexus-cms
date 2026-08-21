@@ -1,20 +1,25 @@
 /**
- * Tenant — the root document every other document references.
+ * Tenant Configuration — the root document every other document references.
  *
- * Deliberately thin. It carries identity and the keys needed to line a tenant
- * up with the code and with Figma; everything else (config, theme, content)
- * lives in focused documents that reference this one. The PDP is explicit that
- * a tenant must not become one large document.
+ * This is the single editor-facing home for tenant identity and higher-level
+ * application settings that are currently stored as environment variables.
+ * Content and theme data remain in focused documents that reference it.
  */
 import { defineField, defineType } from 'sanity';
 
+import { INHERITS } from '../lib/scope';
+
 export const tenant = defineType({
   name: 'tenant',
-  title: 'Tenant',
+  title: 'Tenant Configuration',
   type: 'document',
   groups: [
-    { name: 'identity', title: 'Tenant CMS Settings', default: true },
-    { name: 'products', title: 'Products' },
+    { name: 'identity', title: 'Identity & status', default: true },
+    { name: 'modalities', title: 'Modalities & features' },
+    { name: 'destinations', title: 'External destinations' },
+    { name: 'rewards', title: 'Rewards' },
+    { name: 'commerce', title: 'Commerce' },
+    { name: 'brand', title: 'Brand & SEO' },
   ],
   fields: [
     defineField({
@@ -62,12 +67,11 @@ export const tenant = defineType({
     }),
     defineField({
       name: 'enabledProducts',
-      group: 'products',
-      title: 'Enabled products',
+      group: 'modalities',
+      title: 'Enabled modalities',
       type: 'array',
       description:
-        'Which product surfaces this tenant runs. Controls what appears in the Studio for this tenant and which ' +
-        'product content the API returns. Feature availability inside an app is set in Experience Configuration.',
+        'Which modality surfaces this tenant runs. Controls navigation, API output, and which modality content is used.',
       of: [{ type: 'string' }],
       options: {
         list: [
@@ -86,6 +90,36 @@ export const tenant = defineType({
       description: 'Inactive tenants stay editable but are excluded from the API response.',
       initialValue: true,
     }),
+    defineField({
+      name: 'features',
+      group: 'modalities',
+      title: 'Feature availability',
+      type: 'object',
+      options: { collapsible: true, collapsed: false },
+      fields: [
+        defineField({ name: 'hasSweeps', title: 'Sweepstakes', type: 'boolean', description: INHERITS }),
+      ],
+    }),
+    defineField({
+      name: 'externalUrls',
+      group: 'destinations',
+      title: 'External destinations',
+      type: 'object',
+      description:
+        'Tenant-specific destinations currently supplied through environment variables. Leave a value empty to keep using the application fallback.',
+      options: { collapsible: true, collapsed: false },
+      fields: [
+        defineField({ name: 'travelUrl', title: 'Travel URL', type: 'url', description: INHERITS }),
+        defineField({ name: 'experiencesUrl', title: 'Experiences URL', type: 'url', description: INHERITS }),
+        defineField({ name: 'upgradeUrl', title: 'Membership upgrade URL', type: 'url', description: INHERITS }),
+      ],
+    }),
+    defineField({ name: 'rewards', title: 'Rewards & pricing display', type: 'rewardsConfig', group: 'rewards' }),
+    defineField({ name: 'payments', title: 'Payment methods', type: 'paymentConfig', group: 'commerce' }),
+    defineField({ name: 'topUp', title: 'Points top-up', type: 'topUpConfig', group: 'commerce' }),
+    defineField({ name: 'onboarding', title: 'Login & onboarding', type: 'onboardingConfig', group: 'commerce' }),
+    defineField({ name: 'brandAssets', title: 'Brand assets', type: 'brandAssets', group: 'brand' }),
+    defineField({ name: 'seo', title: 'SEO & metadata', type: 'seoConfig', group: 'brand' }),
   ],
   preview: {
     select: { title: 'title', slug: 'slug.current', active: 'active' },

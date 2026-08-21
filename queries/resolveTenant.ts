@@ -23,6 +23,8 @@ export interface CopyEntry {
 export interface ResolvedTenantBundle {
   tenant: { id: string; title: string; figmaBrandKey: string; domain?: string; enabledProducts?: string[] };
   config: Record<string, unknown>;
+  /** Cross-modality content after Universal-default and tenant-override resolution. */
+  shared: Record<string, unknown>;
   /** Flattened key → text. Product and page copy are namespaced. */
   copy: Record<string, string>;
   pages: Record<string, unknown>;
@@ -68,7 +70,12 @@ export async function resolveTenantBundle(
 
   const warnings: ResolveWarning[] = [];
 
-  const config = resolveSection<Record<string, unknown>>(raw.configDefault ?? {}, raw.configOverride ?? {});
+  const legacyConfig = resolveSection<Record<string, unknown>>(
+    raw.configDefault ?? {},
+    raw.configOverrideLegacy ?? {},
+  );
+  warnings.push(...legacyConfig.warnings);
+  const config = resolveSection<Record<string, unknown>>(legacyConfig.value, raw.configOverride ?? {});
   warnings.push(...config.warnings);
 
   const shared = resolveSection<{ entries?: CopyEntry[]; legal?: unknown[] }>(
@@ -80,17 +87,17 @@ export async function resolveTenantBundle(
   // Product copy: merge per product so a tenant overriding Ticketing copy does
   // not drop the VIP defaults.
   const copy: Record<string, string> = { ...entriesToMap(shared.value?.entries) };
-  const productIds = new Set<string>([
-    ...(raw.productDefaults ?? []).map((p: any) => p.product),
-    ...(raw.productOverrides ?? []).map((p: any) => p.product),
+  const modalityIds = new Set<string>([
+    ...(raw.productDefaults ?? []).map((p: any) => p.modality),
+    ...(raw.productOverrides ?? []).map((p: any) => p.modality),
   ]);
-  for (const product of productIds) {
-    if (!product) continue;
-    const base = (raw.productDefaults ?? []).find((p: any) => p.product === product);
-    const override = (raw.productOverrides ?? []).find((p: any) => p.product === product);
+  for (const modality of modalityIds) {
+    if (!modality) continue;
+    const base = (raw.productDefaults ?? []).find((p: any) => p.modality === modality);
+    const override = (raw.productOverrides ?? []).find((p: any) => p.modality === modality);
     const merged = resolveSection<{ entries?: CopyEntry[] }>(base ?? {}, override ?? {});
-    warnings.push(...merged.warnings.map((w) => ({ ...w, path: `${product}.${w.path}` })));
-    Object.assign(copy, entriesToMap(merged.value?.entries, product));
+    warnings.push(...merged.warnings.map((w) => ({ ...w, path: `${modality}.${w.path}` })));
+    Object.assign(copy, entriesToMap(merged.value?.entries, modality));
   }
 
   // Page content, keyed by route.
@@ -167,6 +174,7 @@ export async function resolveTenantBundle(
   return {
     tenant: raw.tenant,
     config: config.value,
+    shared: shared.value as Record<string, unknown>,
     copy,
     pages,
     theme,

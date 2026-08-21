@@ -15,7 +15,7 @@
  * two second-level rows. The Nexus bar is the newer, simpler design — a handful
  * of top-level destinations with icons, and an account control. Rather than
  * migrate one into the other, the tenant picks which bar it runs and fills in
- * only that one; a tenant mid-migration can have both configured.
+ * only that one. The inactive model stays saved but is hidden from the form.
  */
 import { defineArrayMember, defineField, defineType } from 'sanity';
 
@@ -191,8 +191,8 @@ export const navbarConfig = defineType({
       title: 'Navigation model',
       type: 'string',
       description:
-        'Picks the bar the apps render. Both can be configured — useful while a tenant is mid-migration — but ' +
-        `only the selected one ships. ${INHERITS}`,
+        'Choose the bar the tenant renders. Only the selected model\'s features are shown below. Switching models ' +
+        `does not delete the other model's saved configuration. ${INHERITS}`,
       options: {
         list: [
           { title: 'Bookit Nexus', value: 'nexus' },
@@ -202,13 +202,13 @@ export const navbarConfig = defineType({
     }),
     defineField({
       name: 'nexus',
-      title: 'Bookit Nexus navbar',
+      title: 'Bookit Nexus features',
       type: 'nexusNavbar',
       hidden: ({ parent }) => parent?.variant !== 'nexus',
     }),
     defineField({
       name: 'legacy',
-      title: 'Legacy navbar',
+      title: 'Legacy features',
       type: 'legacyNavbar',
       hidden: ({ parent }) => parent?.variant !== 'legacy',
     }),
@@ -360,26 +360,12 @@ export const siteMetadata = defineType({
 
 export const spreePayWidget = defineType({
   name: 'spreePayWidget',
-  title: 'SpreePay widget',
+  title: 'Payment widget content',
   type: 'object',
   description:
-    'What the payment widget offers. These control what a member is *shown*; keys, rates and eligibility stay ' +
-    'in the SpreePay tenant config API and are deliberately not editable here.',
+    'Cross-modality copy and links displayed by the payment widget. Payment availability, keys, rates and ' +
+    'eligibility belong in Tenant Configuration or the SpreePay config API.',
   fields: [
-    defineField({
-      name: 'allowPointsSpending',
-      title: 'Allow points spending',
-      type: 'boolean',
-      description: INHERITS,
-    }),
-    defineField({ name: 'creditCardPayment', title: 'Credit card', type: 'boolean', description: INHERITS }),
-    defineField({ name: 'cryptoPayment', title: 'Crypto', type: 'boolean', description: INHERITS }),
-    defineField({
-      name: 'cdcPayment',
-      title: 'Crypto.com Pay',
-      type: 'boolean',
-      description: `Crypto.com's own payment rail, distinct from generic crypto. ${INHERITS}`,
-    }),
     defineField({
       name: 'widgetTitle',
       title: 'Widget heading',

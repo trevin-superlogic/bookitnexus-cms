@@ -1,11 +1,11 @@
 /**
- * Content documents: shared → product → page.
+ * Content documents: shared → modality → page.
  *
  * Three levels, each a separate document per the PDP's "focused documents that
  * reference the tenant, not one large document":
  *
- *   sharedContent   legacy site-wide content retained for compatibility
- *   productContent  copy shared across one product's pages
+ *   sharedContent   content reused across multiple modalities
+ *   productContent  content shared within one modality
  *   pageContent     copy for one route
  *
  * Each level exists as a universal default plus optional tenant overrides, so
@@ -82,16 +82,15 @@ export const copyEntry = defineType({
 
 export const sharedContent = defineType({
   name: 'sharedContent',
-  title: 'Shared content (legacy)',
+  title: 'Shared Content',
   type: 'document',
   description:
-    'Deprecated compatibility model. Use Site settings, Navigation & footer, Payment settings, Shared copy, ' +
-    'and Legal documents for new edits. Existing frontend consumers can continue reading these fields.',
+    'Content and presentation settings reused across Ticketing, VIP, Hotels, and Marketing. Tenant overrides inherit empty values from Universal defaults.',
   groups: [
     { name: 'navbar', title: 'Navbar', default: true },
     { name: 'footer', title: 'Footer' },
     { name: 'metadata', title: 'Metadata' },
-    { name: 'payments', title: 'SpreePay Widget' },
+    { name: 'payments', title: 'Payment content' },
     { name: 'copy', title: 'Copy & legal' },
   ],
   fields: [
@@ -121,10 +120,10 @@ export const sharedContent = defineType({
     }),
     defineField({
       name: 'spreePay',
-      title: 'SpreePay widget configuration',
+      title: 'Payment widget content',
       type: 'spreePayWidget',
       group: 'payments',
-      description: 'Which payment methods the widget offers, and the copy around them.',
+      description: 'Cross-modality payment copy and links. Payment availability belongs in Tenant Configuration.',
     }),
     defineField({
       name: 'entries',
@@ -145,7 +144,7 @@ export const sharedContent = defineType({
       of: [
         defineArrayMember({
           type: 'object',
-          name: 'legalDocument',
+          name: 'sharedLegalDocument',
           fields: [
             defineField({ name: 'visible', title: 'Visible', type: 'boolean', initialValue: true }),
             defineField({
@@ -173,7 +172,7 @@ export const sharedContent = defineType({
   preview: {
     select: { tenantTitle: 'tenant.title', id: '_id', entries: 'entries' },
     prepare: ({ tenantTitle, id, entries }) => ({
-      title: 'Shared content (legacy)',
+      title: 'Shared content',
       subtitle: `${scopePreview(id, tenantTitle)} · ${(entries ?? []).length} entries`,
     }),
   },
@@ -181,17 +180,29 @@ export const sharedContent = defineType({
 
 export const productContent = defineType({
   name: 'productContent',
-  title: 'Product content',
+  title: 'Modality Content',
   type: 'document',
-  description: 'Copy shared across all pages of one product.',
+  description: 'Content and settings specific to one Bookit modality.',
   fields: [
     tenantScopeField(),
     defineField({
-      name: 'product',
-      title: 'Product',
+      name: 'modality',
+      title: 'Modality',
       type: 'string',
       options: { list: PRODUCT_OPTIONS, layout: 'radio' },
-      validation: (Rule) => Rule.required(),
+      validation: (Rule) =>
+        Rule.custom((value, context) =>
+          value || context.document?.product ? true : 'Select a modality.',
+        ),
+    }),
+    defineField({
+      name: 'product',
+      title: 'Product (legacy)',
+      type: 'string',
+      options: { list: PRODUCT_OPTIONS },
+      readOnly: true,
+      hidden: ({ value }) => value === undefined,
+      deprecated: { reason: 'Use Modality. Existing values remain readable while content migrates.' },
     }),
     defineField({
       name: 'entries',
@@ -202,9 +213,9 @@ export const productContent = defineType({
     }),
   ],
   preview: {
-    select: { tenantTitle: 'tenant.title', id: '_id', product: 'product', entries: 'entries' },
-    prepare: ({ tenantTitle, id, product, entries }) => ({
-      title: `${product ?? 'Product'} — shared copy`,
+    select: { tenantTitle: 'tenant.title', id: '_id', modality: 'modality', product: 'product', entries: 'entries' },
+    prepare: ({ tenantTitle, id, modality, product, entries }) => ({
+      title: `${modality ?? product ?? 'Modality'} — shared content`,
       subtitle: `${scopePreview(id, tenantTitle)} · ${(entries ?? []).length} entries`,
     }),
   },
@@ -243,7 +254,7 @@ export const pageContent = defineType({
       title: 'Metadata',
       type: 'siteMetadata',
       description:
-        'Overrides for this route only. Anything left empty falls through to Shared content, then to the ' +
+        'Overrides for this route only. Anything left empty falls through to Tenant Configuration, then to the ' +
         'universal default — so setting just a title here keeps the tenant favicon and social image.',
     }),
     defineField({
