@@ -205,8 +205,22 @@ export const productContent = defineType({
       deprecated: { reason: 'Use Modality. Existing values remain readable while content migrates.' },
     }),
     defineField({
+      name: 'ticketing',
+      title: 'Ticketing controls',
+      type: 'ticketingContentConfig',
+      description: 'Explicit Ticketing controls represented in the Figma tenant-config collection.',
+      hidden: ({ document }) => (document?.modality ?? document?.product) !== 'ticketing',
+    }),
+    defineField({
+      name: 'vip',
+      title: 'VIP controls',
+      type: 'vipContentConfig',
+      description: 'Explicit VIP controls represented in the Figma tenant-config collection.',
+      hidden: ({ document }) => (document?.modality ?? document?.product) !== 'vip',
+    }),
+    defineField({
       name: 'entries',
-      title: 'Copy',
+      title: 'Additional copy',
       type: 'array',
       of: [defineArrayMember({ type: 'copyEntry' })],
       description: INHERITS,
