@@ -5,17 +5,12 @@
  *     └── <Tenant>
  *          ├── Tenant Configuration
  *          ├── Theme & style tokens
- *          ├── Shared content
- *          │    ├── Site settings
- *          │    ├── Navigation & footer
- *          │    ├── Payment settings
- *          │    ├── Shared copy
- *          │    ├── Legal documents
- *          │    └── Legacy shared content
- *          └── Product content
- *               ├── Ticketing → shared copy + pages
- *               ├── VIP       → shared copy + pages
- *               └── Hotels    → shared copy + pages
+ *          ├── Shared Content
+ *          └── Modality Content
+ *               ├── Ticketing
+ *               ├── VIP
+ *               ├── Hotels
+ *               └── Marketing
  *   Universal defaults
  *   Foundation tokens
  *
@@ -34,9 +29,14 @@ import { BrandBoard } from '../components/BrandBoard';
 
 import { PRODUCTS } from '../lib/constants';
 import { defaultDocumentId } from '../lib/documentIds';
-import { tenantScopedTemplateId } from '../schemas/templates';
 
 const FOUNDATION_ID = 'foundationTokens.singleton';
+
+/** Types that exist as both a universal default and per-tenant overrides. */
+const SCOPED_SINGLETON_TYPES = [
+  { type: 'experienceConfig', title: 'Tenant Configuration Defaults' },
+  { type: 'sharedContent', title: 'Shared Content' },
+] as const;
 
 const singleton = (S: StructureBuilder, schemaType: string, title: string) =>
   S.listItem()
@@ -44,13 +44,12 @@ const singleton = (S: StructureBuilder, schemaType: string, title: string) =>
     .id(schemaType)
     .child(S.document().schemaType(schemaType).documentId(defaultDocumentId(schemaType)).title(title));
 
-/** Documents of `type` scoped to one tenant. Creates one on demand if absent. */
+/** Documents of `type` scoped to one tenant. */
 const tenantDocument = (
   S: StructureBuilder,
   schemaType: string,
   title: string,
   tenantId: string,
-  useTenantTemplate = false,
 ) =>
   S.listItem()
     .title(title)
@@ -61,80 +60,24 @@ const tenantDocument = (
         .schemaType(schemaType)
         .filter('_type == $type && tenant._ref == $tenantId')
         .params({ type: schemaType, tenantId })
-        // New documents created from here are pre-linked to the tenant, so an
-        // override cannot be saved pointing at the wrong one.
-        .initialValueTemplates(
-          useTenantTemplate
-            ? [S.initialValueTemplateItem(tenantScopedTemplateId(schemaType), { tenantId })]
-            : [],
-        )
+        .initialValueTemplates([])
         .canHandleIntent(() => true)
         .apiVersion('2024-10-01'),
     );
 
-/** Cross-platform content grouped into one compact, editor-facing branch. */
-const sharedContentBranch = (S: StructureBuilder, tenantId: string) =>
+const tenantConfiguration = (S: StructureBuilder, tenantId: string) =>
   S.listItem()
-    .title('Shared content')
-    .id('sharedContent')
-    .child(
-      S.list()
-        .title('Shared content')
-        .items([
-          tenantDocument(S, 'siteSettings', 'Site settings', tenantId, true),
-          tenantDocument(S, 'siteNavigation', 'Navigation & footer', tenantId, true),
-          tenantDocument(S, 'paymentSettings', 'Payment settings', tenantId, true),
-          tenantDocument(S, 'sharedCopy', 'Shared copy', tenantId, true),
-          tenantDocument(S, 'legalDocument', 'Legal documents', tenantId, true),
-          S.divider(),
-          tenantDocument(S, 'sharedContent', 'Legacy shared content', tenantId),
-        ]),
-    );
-
-/** Universal cross-platform defaults use the same hierarchy as each tenant. */
-const sharedContentDefaultsBranch = (S: StructureBuilder) =>
-  S.listItem()
-    .title('Shared content')
-    .id('sharedContentDefaults')
-    .child(
-      S.list()
-        .title('Shared content defaults')
-        .items([
-          singleton(S, 'siteSettings', 'Site settings'),
-          singleton(S, 'siteNavigation', 'Navigation & footer'),
-          singleton(S, 'paymentSettings', 'Payment settings'),
-          S.listItem()
-            .title('Shared copy')
-            .id('sharedCopyDefaults')
-            .child(
-              S.documentList()
-                .title('Shared copy defaults')
-                .schemaType('sharedCopy')
-                .filter('_type == "sharedCopy" && !defined(tenant)')
-                .apiVersion('2024-10-01'),
-            ),
-          S.listItem()
-            .title('Legal documents')
-            .id('legalDocumentDefaults')
-            .child(
-              S.documentList()
-                .title('Legal document defaults')
-                .schemaType('legalDocument')
-                .filter('_type == "legalDocument" && !defined(tenant)')
-                .apiVersion('2024-10-01'),
-            ),
-          S.divider(),
-          singleton(S, 'sharedContent', 'Legacy shared content'),
-        ]),
-    );
+    .title('Tenant Configuration')
+    .id('tenantConfiguration')
+    .child(S.document().schemaType('tenant').documentId(tenantId).title('Tenant Configuration'));
 
 const productBranch = (S: StructureBuilder, tenantId: string) =>
   S.listItem()
-    .title('Product content')
+    .title('Modality Content')
     .id('productContent')
     .child(
       S.list()
-        .title('Products')
+        .title('Modalities')
         .items(
           PRODUCTS.map((product) =>
             S.listItem()
@@ -149,9 +92,9 @@ const productBranch = (S: StructureBuilder, tenantId: string) =>
                       .id('shared')
                       .child(
                         S.documentList()
-                          .title(`${product.title} — shared copy`)
+                          .title(`${product.title} — shared content`)
                           .schemaType('productContent')
-                          .filter('_type == "productContent" && tenant._ref == $tenantId && product == $product')
+                          .filter('_type == "productContent" && tenant._ref == $tenantId && coalesce(modality, product) == $product')
                           .params({ tenantId, product: product.id })
                           .apiVersion('2024-10-01'),
                       ),
@@ -186,22 +129,7 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
               S.list()
                 .title('Tenant')
                 .items([
-                  // The tenant document itself — name, ID, domain, active flag.
-                  S.listItem()
-                    .title('Tenant CMS Settings')
-                    .id('tenantSettings')
-                    .child(S.document().schemaType('tenant').documentId(tenantId).title('Tenant CMS Settings')),
-                  S.listItem()
-                    .title('Tenant Configuration')
-                    .id('experienceConfig')
-                    .child(
-                      S.documentList()
-                        .title('Tenant Configuration')
-                        .schemaType('experienceConfig')
-                        .filter('_type == "experienceConfig" && tenant._ref == $tenantId')
-                        .params({ tenantId })
-                        .apiVersion('2024-10-01'),
-                    ),
+                  tenantConfiguration(S, tenantId),
                   S.listItem()
                     .title('Brand')
                     .id('brand')
@@ -224,7 +152,7 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
                         .params({ tenantId })
                         .apiVersion('2024-10-01'),
                     ),
-                  sharedContentBranch(S, tenantId),
+                  tenantDocument(S, 'sharedContent', 'Shared Content', tenantId),
                   productBranch(S, tenantId),
                 ]),
             ),
@@ -239,15 +167,14 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
           S.list()
             .title('Universal defaults')
             .items([
-              singleton(S, 'experienceConfig', 'Tenant Configuration'),
+              ...SCOPED_SINGLETON_TYPES.map(({ type, title }) => singleton(S, type, title)),
               singleton(S, 'brandTheme', 'Theme & style tokens'),
-              sharedContentDefaultsBranch(S),
               S.listItem()
-                .title('Product content defaults')
+                .title('Modality Content defaults')
                 .id('productContentDefaults')
                 .child(
                   S.documentList()
-                    .title('Product content defaults')
+                    .title('Modality Content defaults')
                     .schemaType('productContent')
                     .filter('_type == "productContent" && !defined(tenant)')
                     .apiVersion('2024-10-01'),
@@ -272,7 +199,14 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
     ]);
 
 /** Types the desk manages as singletons — hidden from the "create new" menu. */
-export const SINGLETON_TYPES = new Set(['foundationTokens']);
+export const HIDDEN_CREATE_TYPES = new Set([
+  'foundationTokens',
+  'siteSettings',
+  'siteNavigation',
+  'paymentSettings',
+  'legalDocument',
+  'sharedCopy',
+]);
 
 /**
  * The brand document opens on its visual board; the form is the second tab.
