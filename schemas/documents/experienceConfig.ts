@@ -17,8 +17,10 @@ import { INHERITS, scopePreview, tenantScopeField } from '../lib/scope';
 
 export const experienceConfig = defineType({
   name: 'experienceConfig',
-  title: 'Tenant Configuration',
+  title: 'Tenant Configuration Defaults',
   type: 'document',
+  description:
+    'Universal application defaults and compatibility data. Tenant-specific settings are edited directly on Tenant Configuration.',
   groups: [
     { name: 'general', title: 'General', default: true },
     { name: 'rewards', title: 'Rewards' },
@@ -74,6 +76,9 @@ export const experienceConfig = defineType({
       type: 'navigationConfig',
       group: 'navigation',
       description: 'Edit navigation under Shared content → Navbar. This copy is retained only for existing data.',
+      readOnly: true,
+      hidden: ({ value }) => value === undefined,
+      deprecated: { reason: 'Navigation belongs in Shared Content.' },
     }),
     defineField({
       name: 'footer',
@@ -81,6 +86,9 @@ export const experienceConfig = defineType({
       type: 'footerConfig',
       group: 'footer',
       description: 'Edit the footer under Shared content → Footer. This copy is retained only for existing data.',
+      readOnly: true,
+      hidden: ({ value }) => value === undefined,
+      deprecated: { reason: 'Footer content belongs in Shared Content.' },
     }),
     defineField({ name: 'payments', title: 'Payment methods', type: 'paymentConfig', group: 'commerce' }),
     defineField({ name: 'topUp', title: 'Points top-up', type: 'topUpConfig', group: 'commerce' }),
