@@ -69,22 +69,103 @@ const NAVBAR_PROJECTION = /* groq */ `{
   }
 }`;
 
+const METADATA_PROJECTION = /* groq */ `{
+  applicationName,
+  title,
+  titleTemplate,
+  description,
+  canonicalUrl,
+  themeColor,
+  noIndex,
+  noFollow,
+  "favicon": favicon{ "url": asset->url, "mimeType": asset->mimeType },
+  "appleTouchIcon": appleTouchIcon{ "url": asset->url, "mimeType": asset->mimeType },
+  "socialImage": socialImage{ "url": asset->url, "mimeType": asset->mimeType, alt, hotspot, crop }
+}`;
+
 const SHARED_CONTENT_PROJECTION = /* groq */ `{
   "navbar": navbar ${NAVBAR_PROJECTION},
   footer,
-  metadata,
+  "metadata": metadata ${METADATA_PROJECTION},
   spreePay,
   entries[]{ _key, key, value, visible },
   legal[]{ _key, slug, title, body, visible }
 }`;
 
+const IMAGE_PROJECTION = /* groq */ `{
+  "url": asset->url,
+  "mimeType": asset->mimeType,
+  alt,
+  hotspot,
+  crop
+}`;
+
+const HERO_PROJECTION = /* groq */ `{
+  heading,
+  subheading,
+  "image": image ${IMAGE_PROJECTION},
+  "mobileImage": mobileImage ${IMAGE_PROJECTION}
+}`;
+
+const EDITORIAL_LINK_PROJECTION = /* groq */ `{
+  _key,
+  visible,
+  label,
+  url,
+  "iconSvg": iconSvg{ "url": asset->url, "mimeType": asset->mimeType, alt }
+}`;
+
+const DISCOVERY_TILE_PROJECTION = /* groq */ `{
+  _key,
+  visible,
+  label,
+  sourceId,
+  url,
+  "image": image ${IMAGE_PROJECTION}
+}`;
+
 const MODALITY_CONTENT_PROJECTION = /* groq */ `{
   "modality": coalesce(modality, product),
-  ticketing { homepage { heading, subheading } },
+  ticketing {
+    homepage {
+      "hero": hero ${HERO_PROJECTION},
+      searchPlaceholder,
+      locationPlaceholder,
+      dateFilterLabels,
+      collections[]{ _key, visible, heading, sourceType, sourceId, itemLimit, viewAllLabel, viewAllUrl },
+      categoryTiles[] ${DISCOVERY_TILE_PROJECTION},
+      popularCities[] ${DISCOVERY_TILE_PROJECTION},
+      heading,
+      subheading
+    },
+    browse {
+      "heroImage": heroImage ${IMAGE_PROJECTION},
+      "mobileHeroImage": mobileHeroImage ${IMAGE_PROJECTION},
+      resultsHeading,
+      emptyHeading,
+      emptyBody
+    },
+    eventDetail
+  },
   vip {
-    homepage { heading, subheading, carouselHeadings[] },
+    homepage {
+      "hero": hero ${HERO_PROJECTION},
+      secondaryNavigation[] ${EDITORIAL_LINK_PROJECTION},
+      collections[]{ _key, visible, heading, sourceType, sourceKey, itemLimit, viewAllLabel, viewAllUrl },
+      categoryTiles[] ${DISCOVERY_TILE_PROJECTION},
+      heading,
+      subheading,
+      carouselHeadings[]
+    },
     searchPlaceholder,
-    sweepstakes { heading, subheading, rulesText }
+    searchResults,
+    detailPage,
+    sweepstakes {
+      "hero": hero ${HERO_PROJECTION},
+      heading,
+      subheading,
+      rulesText
+    }
   },
   entries[]{ _key, key, value, visible }
 }`;
@@ -95,6 +176,7 @@ const PAGE_PROJECTION = /* groq */ `{
   subheading,
   sections[]{ key, heading, body, ctaLabel, ctaUrl, disclaimer, visible, "image": image{ "url": asset->url, alt } },
   entries[]{ key, value, visible },
+  "metadata": metadata ${METADATA_PROJECTION},
   seo
 }`;
 

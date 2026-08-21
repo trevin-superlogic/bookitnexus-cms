@@ -308,6 +308,12 @@ export const siteMetadata = defineType({
   options: { collapsible: true, collapsed: false },
   fields: [
     defineField({
+      name: 'applicationName',
+      title: 'Application name',
+      type: 'string',
+      description: `Browser install and web-manifest name. ${INHERITS}`,
+    }),
+    defineField({
       name: 'title',
       title: 'Title',
       type: 'string',
@@ -327,6 +333,14 @@ export const siteMetadata = defineType({
       rows: 3,
       description: INHERITS,
       validation: (Rule) => Rule.max(160).warning('Descriptions beyond ~160 characters get truncated.'),
+    }),
+    defineField({
+      name: 'canonicalUrl',
+      title: 'Canonical URL',
+      type: 'url',
+      description:
+        `Preferred public URL for this page. Leave empty when the application can derive it from the tenant domain and route. ${INHERITS}`,
+      validation: (Rule) => Rule.uri({ scheme: ['http', 'https'] }),
     }),
     defineField({
       name: 'favicon',
@@ -363,6 +377,13 @@ export const siteMetadata = defineType({
       title: 'Hide from search engines',
       type: 'boolean',
       description: 'Adds a noindex directive. Useful on staging tenants and unlisted pages.',
+      initialValue: false,
+    }),
+    defineField({
+      name: 'noFollow',
+      title: 'Do not follow links',
+      type: 'boolean',
+      description: 'Adds a nofollow directive. Use only for pages whose outbound links should not be crawled.',
       initialValue: false,
     }),
   ],

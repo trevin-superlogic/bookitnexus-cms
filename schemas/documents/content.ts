@@ -268,8 +268,8 @@ export const pageContent = defineType({
       title: 'Metadata',
       type: 'siteMetadata',
       description:
-        'Overrides for this route only. Anything left empty falls through to Tenant Configuration, then to the ' +
-        'universal default — so setting just a title here keeps the tenant favicon and social image.',
+        'Overrides for this route only. Anything left empty falls through to tenant Shared Content, then to the ' +
+        'universal default, so setting just a title here keeps the tenant favicon and social image.',
     }),
     defineField({
       name: 'sections',
@@ -319,7 +319,14 @@ export const pageContent = defineType({
       of: [defineArrayMember({ type: 'copyEntry' })],
       description: `Keyed strings specific to this page. ${INHERITS}`,
     }),
-    defineField({ name: 'seo', title: 'SEO overrides', type: 'seoConfig' }),
+    defineField({
+      name: 'seo',
+      title: 'SEO overrides (legacy)',
+      type: 'seoConfig',
+      readOnly: true,
+      hidden: ({ value }) => value === undefined,
+      deprecated: { reason: 'Use Metadata. Existing values remain readable until consumers migrate.' },
+    }),
   ],
   preview: {
     select: { tenantTitle: 'tenant.title', id: '_id', route: 'route', heading: 'heading' },
