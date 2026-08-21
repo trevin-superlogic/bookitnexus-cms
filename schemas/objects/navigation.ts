@@ -40,14 +40,29 @@ export const navItem = defineType({
       title: 'URL',
       type: 'string',
       description:
-        'Absolute URL, or a path beginning with "/". Use {travelUrl}, {experiencesUrl} or {upgradeUrl} to ' +
-        'reference the environment-configured base URLs rather than hardcoding a domain per environment.',
+        'Use a path beginning with "/" for an internal destination, a full http(s) URL for an external ' +
+        'destination, or {travelUrl}, {experiencesUrl} or {upgradeUrl} for a tenant base URL.',
       validation: (Rule) =>
         Rule.required().custom((value) =>
           !value || value.startsWith('/') || value.startsWith('http') || value.startsWith('{')
             ? true
             : 'Must start with "/", "http", or a {placeholder}.',
         ),
+    }),
+    defineField({
+      name: 'iconSvg',
+      title: 'Icon SVG',
+      type: 'image',
+      description: `Optional SVG displayed with this navigation item. ${INHERITS}`,
+      options: { accept: '.svg', hotspot: false },
+      fields: [
+        defineField({
+          name: 'alt',
+          title: 'Accessible label',
+          type: 'string',
+          description: 'Describe the icon when it communicates meaning that is not already present in the link label.',
+        }),
+      ],
     }),
     defineField({
       name: 'requiresTier',
@@ -81,10 +96,10 @@ export const navItem = defineType({
     }),
   ],
   preview: {
-    select: { label: 'label', url: 'url', visible: 'visible', gated: 'requiresTier' },
-    prepare: ({ label, url, visible, gated }) => ({
+    select: { label: 'label', url: 'url', visible: 'visible', gated: 'requiresTier', icon: 'iconSvg' },
+    prepare: ({ label, url, visible, gated, icon }) => ({
       title: `${visible === false ? '○ ' : ''}${label ?? 'Untitled'}`,
-      subtitle: [url, gated ? 'tier-gated' : null].filter(Boolean).join(' · '),
+      subtitle: [icon ? 'SVG icon' : null, url, gated ? 'tier-gated' : null].filter(Boolean).join(' · '),
     }),
   },
 });
