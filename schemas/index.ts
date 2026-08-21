@@ -9,6 +9,7 @@ import { legalDocument, paymentSettings, sharedCopy, siteNavigation, siteSetting
 import { brandAssets, seoConfig } from './objects/brand';
 import { onboardingConfig, onboardingSlide, paymentConfig, topUpConfig, topUpTile } from './objects/commerce';
 import { footerConfig, footerLink } from './objects/footer';
+import { ticketingContentConfig, vipContentConfig } from './objects/modalityContent';
 import { navigationConfig, navItem } from './objects/navigation';
 import { rewardsConfig } from './objects/rewards';
 import {
@@ -62,6 +63,8 @@ export const schemaTypes: SchemaTypeDefinition[] = [
   topUpTile,
   onboardingConfig,
   onboardingSlide,
+  vipContentConfig,
+  ticketingContentConfig,
   brandAssets,
   seoConfig,
 

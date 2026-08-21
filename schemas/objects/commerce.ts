@@ -79,12 +79,19 @@ export const topUpConfig = defineType({
   options: { collapsible: true, collapsed: true },
   fields: [
     defineField({
+      name: 'enabled',
+      title: 'Enable points top-up',
+      type: 'boolean',
+      description: `Controls whether the points top-up surface is offered for this tenant. ${INHERITS}`,
+    }),
+    defineField({
       name: 'tiles',
       title: 'Top-up tiles',
       type: 'array',
       description: `The preset amounts offered. ${INHERITS}`,
       of: [defineArrayMember({ type: 'topUpTile' })],
       validation: (Rule) => Rule.max(6).warning('More than six tiles will wrap awkwardly on mobile.'),
+      hidden: ({ parent }) => parent?.enabled === false,
     }),
   ],
 });
@@ -117,8 +124,9 @@ export const onboardingConfig = defineType({
       name: 'slides',
       title: 'Onboarding slides',
       type: 'array',
-      description: `The carousel shown before sign-up. ${INHERITS}`,
+      description: `The carousel shown before sign-up. The current Figma template defines four slides. ${INHERITS}`,
       of: [defineArrayMember({ type: 'onboardingSlide' })],
+      validation: (Rule) => Rule.max(4).warning('The current onboarding surface supports four slides.'),
     }),
     defineField({ name: 'loginHeading', title: 'Login heading', type: 'string', description: INHERITS }),
     defineField({ name: 'loginSubheading', title: 'Login subheading', type: 'text', rows: 2, description: INHERITS }),

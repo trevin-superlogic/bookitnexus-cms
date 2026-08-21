@@ -25,6 +25,8 @@ export interface ResolvedTenantBundle {
   config: Record<string, unknown>;
   /** Cross-modality content after Universal-default and tenant-override resolution. */
   shared: Record<string, unknown>;
+  /** Modality-specific controls after Universal-default and tenant-override resolution. */
+  modalities: Record<string, Record<string, unknown>>;
   /** Flattened key → text. Product and page copy are namespaced. */
   copy: Record<string, string>;
   pages: Record<string, unknown>;
@@ -87,6 +89,7 @@ export async function resolveTenantBundle(
   // Product copy: merge per product so a tenant overriding Ticketing copy does
   // not drop the VIP defaults.
   const copy: Record<string, string> = { ...entriesToMap(shared.value?.entries) };
+  const modalities: Record<string, Record<string, unknown>> = {};
   const modalityIds = new Set<string>([
     ...(raw.productDefaults ?? []).map((p: any) => p.modality),
     ...(raw.productOverrides ?? []).map((p: any) => p.modality),
@@ -95,9 +98,16 @@ export async function resolveTenantBundle(
     if (!modality) continue;
     const base = (raw.productDefaults ?? []).find((p: any) => p.modality === modality);
     const override = (raw.productOverrides ?? []).find((p: any) => p.modality === modality);
-    const merged = resolveSection<{ entries?: CopyEntry[] }>(base ?? {}, override ?? {});
+    const merged = resolveSection<Record<string, unknown> & { entries?: CopyEntry[] }>(base ?? {}, override ?? {});
     warnings.push(...merged.warnings.map((w) => ({ ...w, path: `${modality}.${w.path}` })));
     Object.assign(copy, entriesToMap(merged.value?.entries, modality));
+    const specific = merged.value?.[modality];
+    modalities[modality] = {
+      ...(specific && typeof specific === 'object' && !Array.isArray(specific)
+        ? (specific as Record<string, unknown>)
+        : {}),
+      entries: merged.value?.entries ?? [],
+    };
   }
 
   // Page content, keyed by route.
@@ -175,6 +185,7 @@ export async function resolveTenantBundle(
     tenant: raw.tenant,
     config: config.value,
     shared: shared.value as Record<string, unknown>,
+    modalities,
     copy,
     pages,
     theme,
