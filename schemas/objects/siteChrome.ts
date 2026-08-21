@@ -12,10 +12,10 @@
  *
  * Two navbars exist on purpose. The legacy bar is the one the Figma "Tenant
  * Config" collection describes: seven level-1 slots plus a featured slot, and
- * two second-level rows. The Nexus bar is the newer, simpler design — a handful
- * of top-level destinations with icons, and an account control. Rather than
- * migrate one into the other, the tenant picks which bar it runs and fills in
- * only that one. The inactive model stays saved but is hidden from the form.
+ * two second-level rows. Nexus and Legacy render differently, but they use one
+ * shared navigation configuration so switching renderers never duplicates or
+ * drops labels, destinations, or icons. The older nested model definitions are
+ * retained read-only for compatibility with existing documents.
  */
 import { defineArrayMember, defineField, defineType } from 'sanity';
 
@@ -148,7 +148,7 @@ export const nexusNavbar = defineType({
   title: 'Bookit Nexus navbar',
   type: 'object',
   options: { collapsible: true, collapsed: false },
-  description: 'The simplified bar: a few top-level destinations with icons, and an account control.',
+  description: 'Legacy nested Nexus data retained until existing documents are migrated to the shared Navbar fields.',
   fields: [
     logoField('primaryLogo', 'Primary logo', 'Shown at the left of the bar.'),
     defineField({
@@ -191,26 +191,38 @@ export const navbarConfig = defineType({
       title: 'Navigation model',
       type: 'string',
       description:
-        'Choose the bar the tenant renders. Only the selected model\'s features are shown below. Switching models ' +
-        `does not delete the other model's saved configuration. ${INHERITS}`,
+        `Choose which navbar renderer the tenant uses. The navigation content below is shared by both. ${INHERITS}`,
       options: {
         list: [
           { title: 'Bookit Nexus', value: 'nexus' },
           { title: 'Legacy', value: 'legacy' },
         ],
+        layout: 'radio',
       },
     }),
+    logoField('primaryLogo', 'Primary logo', 'Shown at the left of either navbar.'),
+    defineField({
+      name: 'navigation',
+      title: 'Navigation',
+      type: 'navigationConfig',
+      description: 'Shared labels, destinations, SVG icons, visibility, and behavior for both navbar renderers.',
+    }),
+    defineField({ name: 'auth', title: 'Account control', type: 'authControls' }),
     defineField({
       name: 'nexus',
-      title: 'Bookit Nexus features',
+      title: 'Bookit Nexus configuration (legacy data)',
       type: 'nexusNavbar',
-      hidden: ({ parent }) => parent?.variant !== 'nexus',
+      readOnly: true,
+      hidden: ({ value }) => value === undefined,
+      deprecated: { reason: 'Use the shared Navbar fields above. Existing data remains readable until migrated.' },
     }),
     defineField({
       name: 'legacy',
-      title: 'Legacy features',
+      title: 'Legacy configuration (legacy data)',
       type: 'legacyNavbar',
-      hidden: ({ parent }) => parent?.variant !== 'legacy',
+      readOnly: true,
+      hidden: ({ value }) => value === undefined,
+      deprecated: { reason: 'Use the shared Navbar fields above. Existing data remains readable until migrated.' },
     }),
   ],
 });
