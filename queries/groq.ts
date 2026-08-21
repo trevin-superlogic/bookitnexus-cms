@@ -33,13 +33,60 @@ const EXPERIENCE_CONFIG_PROJECTION = /* groq */ `{
   }
 }`;
 
+const NAV_ITEM_PROJECTION = /* groq */ `{
+  _key,
+  visible,
+  label,
+  url,
+  requiresTier,
+  showCategoryTags,
+  emphasis,
+  "iconSvg": iconSvg{ "url": asset->url, "mimeType": asset->mimeType, alt }
+}`;
+
+const NAVIGATION_PROJECTION = /* groq */ `{
+  "featured": featured ${NAV_ITEM_PROJECTION},
+  "primary": primary[] ${NAV_ITEM_PROJECTION},
+  "vipSubNav": vipSubNav[] ${NAV_ITEM_PROJECTION},
+  "ticketingSubNav": ticketingSubNav[] ${NAV_ITEM_PROJECTION},
+  "accountNav": accountNav[] ${NAV_ITEM_PROJECTION}
+}`;
+
+const NAVBAR_PROJECTION = /* groq */ `{
+  variant,
+  "primaryLogo": primaryLogo{ "url": asset->url, "mimeType": asset->mimeType, alt, href },
+  "navigation": navigation ${NAVIGATION_PROJECTION},
+  auth,
+  nexus {
+    "primaryLogo": primaryLogo{ "url": asset->url, "mimeType": asset->mimeType, alt, href },
+    auth,
+    slots[]{ _key, visible, label, url, icon, emphasis }
+  },
+  legacy {
+    "primaryLogo": primaryLogo{ "url": asset->url, "mimeType": asset->mimeType, alt, href },
+    "navigation": navigation ${NAVIGATION_PROJECTION},
+    auth
+  }
+}`;
+
 const SHARED_CONTENT_PROJECTION = /* groq */ `{
-  navbar,
+  "navbar": navbar ${NAVBAR_PROJECTION},
   footer,
   metadata,
   spreePay,
   entries[]{ _key, key, value, visible },
   legal[]{ _key, slug, title, body, visible }
+}`;
+
+const MODALITY_CONTENT_PROJECTION = /* groq */ `{
+  "modality": coalesce(modality, product),
+  ticketing { homepage { heading, subheading } },
+  vip {
+    homepage { heading, subheading, carouselHeadings[] },
+    searchPlaceholder,
+    sweepstakes { heading, subheading, rulesText }
+  },
+  entries[]{ _key, key, value, visible }
 }`;
 
 const PAGE_PROJECTION = /* groq */ `{
@@ -90,12 +137,8 @@ export const TENANT_BUNDLE_QUERY = /* groq */ `{
   "sharedDefault":  *[_id == "default.sharedContent"][0] ${SHARED_CONTENT_PROJECTION},
   "sharedOverride": *[_type == "sharedContent" && tenant->slug.current == $tenant][0] ${SHARED_CONTENT_PROJECTION},
 
-  "productDefaults":  *[_type == "productContent" && !defined(tenant)]{
-    "modality": coalesce(modality, product), entries[]{ _key, key, value, visible }
-  },
-  "productOverrides": *[_type == "productContent" && tenant->slug.current == $tenant]{
-    "modality": coalesce(modality, product), entries[]{ _key, key, value, visible }
-  },
+  "productDefaults":  *[_type == "productContent" && !defined(tenant)] ${MODALITY_CONTENT_PROJECTION},
+  "productOverrides": *[_type == "productContent" && tenant->slug.current == $tenant] ${MODALITY_CONTENT_PROJECTION},
 
   "pageDefaults":  *[_type == "pageContent" && !defined(tenant)] ${PAGE_PROJECTION},
   "pageOverrides": *[_type == "pageContent" && tenant->slug.current == $tenant] ${PAGE_PROJECTION},
