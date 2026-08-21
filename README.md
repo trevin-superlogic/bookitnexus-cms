@@ -195,6 +195,8 @@ import { resolveTenantBundle } from '@superlogic/bookit-cms/queries/resolveTenan
 
 const bundle = await resolveTenantBundle(client, process.env.TENANT!);
 // bundle.config  — resolved, visibility applied, no inheritance left
+// bundle.shared  — resolved navbar, footer, metadata, and shared content
+// bundle.modalities — resolved Ticketing, VIP, Hotels, and Marketing controls
 // bundle.copy    — flat key → text
 // bundle.pages   — keyed by route
 // bundle.theme   — { css, variables, sharedCss, scaleCss }
