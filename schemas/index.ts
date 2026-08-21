@@ -1,31 +1,14 @@
-import type { SchemaTypeDefinition } from "sanity";
+import type { SchemaTypeDefinition } from 'sanity';
 
-import { brand, brandRole } from "./documents/brand";
-import { brandTheme, foundationTokens } from "./documents/brandTheme";
-import {
-  copyEntry,
-  pageContent,
-  productContent,
-  sharedContent,
-} from "./documents/content";
-import { experienceConfig } from "./documents/experienceConfig";
-import { tenant } from "./documents/tenant";
-import {
-  legalDocument,
-  paymentSettings,
-  sharedCopy,
-  siteNavigation,
-  siteSettings,
-} from "./documents/siteContent";
-import { brandAssets, seoConfig } from "./objects/brand";
-import {
-  onboardingConfig,
-  onboardingSlide,
-  paymentConfig,
-  topUpConfig,
-  topUpTile,
-} from "./objects/commerce";
-import { footerConfig, footerLink } from "./objects/footer";
+import { brand, brandRole } from './documents/brand';
+import { brandTheme, foundationTokens } from './documents/brandTheme';
+import { copyEntry, pageContent, productContent, sharedContent } from './documents/content';
+import { experienceConfig } from './documents/experienceConfig';
+import { tenant } from './documents/tenant';
+import { legalDocument, paymentSettings, sharedCopy, siteNavigation, siteSettings } from './documents/siteContent';
+import { brandAssets, seoConfig } from './objects/brand';
+import { onboardingConfig, onboardingSlide, paymentConfig, topUpConfig, topUpTile } from './objects/commerce';
+import { footerConfig, footerLink } from './objects/footer';
 import {
   discoveryTile,
   editorialLink,
@@ -34,9 +17,9 @@ import {
   ticketCollection,
   ticketingContentConfig,
   vipContentConfig,
-} from "./objects/modalityContent";
-import { navigationConfig, navItem } from "./objects/navigation";
-import { rewardsConfig } from "./objects/rewards";
+} from './objects/modalityContent';
+import { navigationConfig, navItem } from './objects/navigation';
+import { rewardsConfig } from './objects/rewards';
 import {
   authControls,
   footerChrome,
@@ -47,14 +30,8 @@ import {
   nexusNavbar,
   siteMetadata,
   spreePayWidget,
-} from "./objects/siteChrome";
-import {
-  compiledTheme,
-  storedToken,
-  tokenOverride,
-  tokenSet,
-  validationReport,
-} from "./objects/tokens";
+} from './objects/siteChrome';
+import { compiledTheme, storedToken, tokenOverride, tokenSet, validationReport } from './objects/tokens';
 
 export const schemaTypes: SchemaTypeDefinition[] = [
   // Documents
