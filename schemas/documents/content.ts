@@ -16,32 +16,32 @@
  * a free-text route produces content that silently never renders, and there is
  * nothing in the CMS to notice it.
  */
-import { defineArrayMember, defineField, defineType } from "sanity";
+import { defineArrayMember, defineField, defineType } from 'sanity';
 
-import { INHERITS, scopePreview, tenantScopeField } from "../lib/scope";
+import { INHERITS, scopePreview, tenantScopeField } from '../lib/scope';
 
 /** Routes that exist in the apps today. Extend as pages are added. */
 const PAGE_ROUTES = [
-  { title: "Ticketing — Home", value: "ticketing/home" },
-  { title: "Ticketing — Search", value: "ticketing/search" },
-  { title: "Ticketing — Browse", value: "ticketing/browse" },
-  { title: "Ticketing — Event detail", value: "ticketing/event" },
-  { title: "Ticketing — Checkout", value: "ticketing/checkout" },
-  { title: "Ticketing — Account", value: "ticketing/account" },
-  { title: "VIP — Home", value: "vip/home" },
-  { title: "VIP — Membership", value: "vip/membership" },
-  { title: "VIP — Profile", value: "vip/profile" },
-  { title: "VIP — Sweepstakes", value: "vip/sweepstakes" },
-  { title: "Hotels — Home", value: "hotels/home" },
-  { title: "Hotels — Search", value: "hotels/search" },
-  { title: "Marketing — Travel home", value: "marketing/travel-home" },
+  { title: 'Ticketing — Home', value: 'ticketing/home' },
+  { title: 'Ticketing — Search', value: 'ticketing/search' },
+  { title: 'Ticketing — Browse', value: 'ticketing/browse' },
+  { title: 'Ticketing — Event detail', value: 'ticketing/event' },
+  { title: 'Ticketing — Checkout', value: 'ticketing/checkout' },
+  { title: 'Ticketing — Account', value: 'ticketing/account' },
+  { title: 'VIP — Home', value: 'vip/home' },
+  { title: 'VIP — Membership', value: 'vip/membership' },
+  { title: 'VIP — Profile', value: 'vip/profile' },
+  { title: 'VIP — Sweepstakes', value: 'vip/sweepstakes' },
+  { title: 'Hotels — Home', value: 'hotels/home' },
+  { title: 'Hotels — Search', value: 'hotels/search' },
+  { title: 'Marketing — Travel home', value: 'marketing/travel-home' },
 ];
 
 const PRODUCT_OPTIONS = [
-  { title: "Ticketing", value: "ticketing" },
-  { title: "VIP", value: "vip" },
-  { title: "Hotels", value: "hotels" },
-  { title: "Marketing", value: "marketing" },
+  { title: 'Ticketing', value: 'ticketing' },
+  { title: 'VIP', value: 'vip' },
+  { title: 'Hotels', value: 'hotels' },
+  { title: 'Marketing', value: 'marketing' },
 ];
 
 /**
@@ -51,333 +51,261 @@ const PRODUCT_OPTIONS = [
  * of `copy[3]`, and so reordering in the Studio cannot change what renders.
  */
 export const copyEntry = defineType({
-  name: "copyEntry",
-  title: "Copy",
-  type: "object",
+  name: 'copyEntry',
+  title: 'Copy',
+  type: 'object',
   fields: [
+    defineField({ name: 'visible', title: 'Visible', type: 'boolean', initialValue: true }),
     defineField({
-      name: "visible",
-      title: "Visible",
-      type: "boolean",
-      initialValue: true,
-    }),
-    defineField({
-      name: "key",
-      title: "Key",
-      type: "string",
-      description:
-        'Stable identifier the frontend reads, e.g. "emptyState.noEvents". Changing it breaks the reference.',
+      name: 'key',
+      title: 'Key',
+      type: 'string',
+      description: 'Stable identifier the frontend reads, e.g. "emptyState.noEvents". Changing it breaks the reference.',
       validation: (Rule) =>
         Rule.required().custom((value) =>
-          value && /^[a-zA-Z0-9.\-_]+$/.test(value)
-            ? true
-            : "Letters, numbers, dots, hyphens and underscores only.",
+          value && /^[a-zA-Z0-9.\-_]+$/.test(value) ? true : 'Letters, numbers, dots, hyphens and underscores only.',
         ),
     }),
+    defineField({ name: 'value', title: 'Text', type: 'text', rows: 2, description: INHERITS }),
     defineField({
-      name: "value",
-      title: "Text",
-      type: "text",
-      rows: 2,
-      description: INHERITS,
-    }),
-    defineField({
-      name: "notes",
-      title: "Notes for editors",
-      type: "string",
-      description:
-        "Where this appears, and anything worth knowing before changing it.",
+      name: 'notes',
+      title: 'Notes for editors',
+      type: 'string',
+      description: 'Where this appears, and anything worth knowing before changing it.',
     }),
   ],
   preview: {
-    select: { key: "key", value: "value", visible: "visible" },
-    prepare: ({ key, value, visible }) => ({
-      title: `${visible === false ? "○ " : ""}${key ?? ""}`,
-      subtitle: value,
-    }),
+    select: { key: 'key', value: 'value', visible: 'visible' },
+    prepare: ({ key, value, visible }) => ({ title: `${visible === false ? '○ ' : ''}${key ?? ''}`, subtitle: value }),
   },
 });
 
 export const sharedContent = defineType({
-  name: "sharedContent",
-  title: "Shared Content",
-  type: "document",
+  name: 'sharedContent',
+  title: 'Shared Content',
+  type: 'document',
   description:
-    "Content and presentation settings reused across Ticketing, VIP, Hotels, and Marketing. Tenant overrides inherit empty values from Universal defaults.",
+    'Content and presentation settings reused across Ticketing, VIP, Hotels, and Marketing. Tenant overrides inherit empty values from Universal defaults.',
   groups: [
-    { name: "navbar", title: "Navbar", default: true },
-    { name: "footer", title: "Footer" },
-    { name: "metadata", title: "Metadata" },
-    { name: "payments", title: "Payment content" },
-    { name: "copy", title: "Copy & legal" },
+    { name: 'navbar', title: 'Navbar', default: true },
+    { name: 'footer', title: 'Footer' },
+    { name: 'metadata', title: 'Metadata' },
+    { name: 'payments', title: 'Payment content' },
+    { name: 'copy', title: 'Copy & legal' },
   ],
   fields: [
-    { ...tenantScopeField(), group: "navbar" },
+    { ...tenantScopeField(), group: 'navbar' },
     defineField({
-      name: "navbar",
-      title: "Navbar",
-      type: "navbarConfig",
-      group: "navbar",
-      description:
-        "The bar at the top of every page — logo, destinations, and the account control.",
+      name: 'navbar',
+      title: 'Navbar',
+      type: 'navbarConfig',
+      group: 'navbar',
+      description: 'The bar at the top of every page — logo, destinations, and the account control.',
     }),
     defineField({
-      name: "footer",
-      title: "Footer",
-      type: "footerChrome",
-      group: "footer",
-      description:
-        "The footer on every page — logo, link groups, co-branding, and support contacts.",
+      name: 'footer',
+      title: 'Footer',
+      type: 'footerChrome',
+      group: 'footer',
+      description: 'The footer on every page — logo, link groups, co-branding, and support contacts.',
     }),
     defineField({
-      name: "metadata",
-      title: "Metadata",
-      type: "siteMetadata",
-      group: "metadata",
+      name: 'metadata',
+      title: 'Metadata',
+      type: 'siteMetadata',
+      group: 'metadata',
       description:
-        "Head metadata for the whole tenant. Individual pages carry the same fields and override only what " +
-        "they set, so a page can change its title while keeping this favicon and social image.",
+        'Head metadata for the whole tenant. Individual pages carry the same fields and override only what ' +
+        'they set, so a page can change its title while keeping this favicon and social image.',
     }),
     defineField({
-      name: "spreePay",
-      title: "Payment widget content",
-      type: "spreePayWidget",
-      group: "payments",
-      description:
-        "Cross-modality payment copy and links. Payment availability belongs in Tenant Configuration.",
+      name: 'spreePay',
+      title: 'Payment widget content',
+      type: 'spreePayWidget',
+      group: 'payments',
+      description: 'Cross-modality payment copy and links. Payment availability belongs in Tenant Configuration.',
     }),
     defineField({
-      name: "entries",
-      title: "Copy",
-      type: "array",
-      group: "copy",
-      of: [defineArrayMember({ type: "copyEntry" })],
+      name: 'entries',
+      title: 'Copy',
+      type: 'array',
+      group: 'copy',
+      of: [defineArrayMember({ type: 'copyEntry' })],
       description: `Overriding any entry replaces only that key — other keys still inherit. ${INHERITS}`,
     }),
     defineField({
-      name: "legal",
-      title: "Legal documents",
-      type: "array",
-      group: "copy",
+      name: 'legal',
+      title: 'Legal documents',
+      type: 'array',
+      group: 'copy',
       description:
-        "Terms, privacy policy and similar. Replaces the static HTML currently served from " +
-        "public/assets/privacy/ and hardcoded to a single tenant.",
+        'Terms, privacy policy and similar. Replaces the static HTML currently served from ' +
+        'public/assets/privacy/ and hardcoded to a single tenant.',
       of: [
         defineArrayMember({
-          type: "object",
-          name: "sharedLegalDocument",
+          type: 'object',
+          name: 'sharedLegalDocument',
           fields: [
+            defineField({ name: 'visible', title: 'Visible', type: 'boolean', initialValue: true }),
             defineField({
-              name: "visible",
-              title: "Visible",
-              type: "boolean",
-              initialValue: true,
-            }),
-            defineField({
-              name: "slug",
-              title: "Route",
-              type: "string",
+              name: 'slug',
+              title: 'Route',
+              type: 'string',
               options: {
                 list: [
-                  { title: "/terms", value: "terms" },
-                  { title: "/privacy-policy", value: "privacy-policy" },
-                  { title: "/accessibility", value: "accessibility" },
-                  { title: "/cookie-policy", value: "cookie-policy" },
+                  { title: '/terms', value: 'terms' },
+                  { title: '/privacy-policy', value: 'privacy-policy' },
+                  { title: '/accessibility', value: 'accessibility' },
+                  { title: '/cookie-policy', value: 'cookie-policy' },
                 ],
               },
               validation: (Rule) => Rule.required(),
             }),
-            defineField({
-              name: "title",
-              title: "Title",
-              type: "string",
-              validation: (Rule) => Rule.required(),
-            }),
-            defineField({
-              name: "body",
-              title: "Body",
-              type: "array",
-              of: [{ type: "block" }],
-            }),
+            defineField({ name: 'title', title: 'Title', type: 'string', validation: (Rule) => Rule.required() }),
+            defineField({ name: 'body', title: 'Body', type: 'array', of: [{ type: 'block' }] }),
           ],
-          preview: {
-            select: { title: "title", subtitle: "slug", visible: "visible" },
-          },
+          preview: { select: { title: 'title', subtitle: 'slug', visible: 'visible' } },
         }),
       ],
     }),
   ],
   preview: {
-    select: { tenantTitle: "tenant.title", id: "_id", entries: "entries" },
+    select: { tenantTitle: 'tenant.title', id: '_id', entries: 'entries' },
     prepare: ({ tenantTitle, id, entries }) => ({
-      title: "Shared content",
+      title: 'Shared content',
       subtitle: `${scopePreview(id, tenantTitle)} · ${(entries ?? []).length} entries`,
     }),
   },
 });
 
 export const productContent = defineType({
-  name: "productContent",
-  title: "Modality Content",
-  type: "document",
-  description: "Content and settings specific to one Bookit modality.",
+  name: 'productContent',
+  title: 'Modality Content',
+  type: 'document',
+  description: 'Content and settings specific to one Bookit modality.',
   fields: [
     tenantScopeField(),
     defineField({
-      name: "modality",
-      title: "Modality",
-      type: "string",
-      options: { list: PRODUCT_OPTIONS, layout: "radio" },
+      name: 'modality',
+      title: 'Modality',
+      type: 'string',
+      options: { list: PRODUCT_OPTIONS, layout: 'radio' },
       validation: (Rule) =>
         Rule.custom((value, context) =>
-          value || context.document?.product ? true : "Select a modality.",
+          value || context.document?.product ? true : 'Select a modality.',
         ),
     }),
     defineField({
-      name: "product",
-      title: "Product (legacy)",
-      type: "string",
+      name: 'product',
+      title: 'Product (legacy)',
+      type: 'string',
       options: { list: PRODUCT_OPTIONS },
       readOnly: true,
       hidden: ({ value }) => value === undefined,
-      deprecated: {
-        reason:
-          "Use Modality. Existing values remain readable while content migrates.",
-      },
+      deprecated: { reason: 'Use Modality. Existing values remain readable while content migrates.' },
     }),
     defineField({
-      name: "ticketing",
-      title: "Ticketing controls",
-      type: "ticketingContentConfig",
-      description:
-        "Explicit Ticketing controls represented in the Figma tenant-config collection.",
-      hidden: ({ document }) =>
-        (document?.modality ?? document?.product) !== "ticketing",
+      name: 'ticketing',
+      title: 'Ticketing controls',
+      type: 'ticketingContentConfig',
+      description: 'Explicit Ticketing controls represented in the Figma tenant-config collection.',
+      hidden: ({ document }) => (document?.modality ?? document?.product) !== 'ticketing',
     }),
     defineField({
-      name: "vip",
-      title: "VIP controls",
-      type: "vipContentConfig",
-      description:
-        "Explicit VIP controls represented in the Figma tenant-config collection.",
-      hidden: ({ document }) =>
-        (document?.modality ?? document?.product) !== "vip",
+      name: 'vip',
+      title: 'VIP controls',
+      type: 'vipContentConfig',
+      description: 'Explicit VIP controls represented in the Figma tenant-config collection.',
+      hidden: ({ document }) => (document?.modality ?? document?.product) !== 'vip',
     }),
     defineField({
-      name: "entries",
-      title: "Additional copy",
-      type: "array",
-      of: [defineArrayMember({ type: "copyEntry" })],
+      name: 'entries',
+      title: 'Additional copy',
+      type: 'array',
+      of: [defineArrayMember({ type: 'copyEntry' })],
       description: INHERITS,
     }),
   ],
   preview: {
-    select: {
-      tenantTitle: "tenant.title",
-      id: "_id",
-      modality: "modality",
-      product: "product",
-      entries: "entries",
-    },
+    select: { tenantTitle: 'tenant.title', id: '_id', modality: 'modality', product: 'product', entries: 'entries' },
     prepare: ({ tenantTitle, id, modality, product, entries }) => ({
-      title: `${modality ?? product ?? "Modality"} — shared content`,
+      title: `${modality ?? product ?? 'Modality'} — shared content`,
       subtitle: `${scopePreview(id, tenantTitle)} · ${(entries ?? []).length} entries`,
     }),
   },
 });
 
 export const pageContent = defineType({
-  name: "pageContent",
-  title: "Page content",
-  type: "document",
-  description: "Copy for a single route.",
+  name: 'pageContent',
+  title: 'Page content',
+  type: 'document',
+  description: 'Copy for a single route.',
   fields: [
     tenantScopeField(),
     defineField({
-      name: "route",
-      title: "Page",
-      type: "string",
+      name: 'route',
+      title: 'Page',
+      type: 'string',
       options: { list: PAGE_ROUTES },
-      description:
-        "Chosen from the routes that exist in the apps — free text would let content point at nothing.",
+      description: 'Chosen from the routes that exist in the apps — free text would let content point at nothing.',
       validation: (Rule) => Rule.required(),
     }),
     defineField({
-      name: "heading",
-      title: "Heading",
-      type: "string",
+      name: 'heading',
+      title: 'Heading',
+      type: 'string',
       description: `The page's main heading. ${INHERITS}`,
     }),
     defineField({
-      name: "subheading",
-      title: "Subheading",
-      type: "text",
+      name: 'subheading',
+      title: 'Subheading',
+      type: 'text',
       rows: 3,
       description: INHERITS,
     }),
     defineField({
-      name: "metadata",
-      title: "Metadata",
-      type: "siteMetadata",
+      name: 'metadata',
+      title: 'Metadata',
+      type: 'siteMetadata',
       description:
-        "Overrides for this route only. Anything left empty falls through to tenant Shared Content, then to the " +
-        "universal default, so setting just a title here keeps the tenant favicon and social image.",
+        'Overrides for this route only. Anything left empty falls through to tenant Shared Content, then to the ' +
+        'universal default, so setting just a title here keeps the tenant favicon and social image.',
     }),
     defineField({
-      name: "sections",
-      title: "Sections",
-      type: "array",
+      name: 'sections',
+      title: 'Sections',
+      type: 'array',
       description: `Ordered content blocks. ${INHERITS}`,
       of: [
         defineArrayMember({
-          type: "object",
-          name: "contentSection",
+          type: 'object',
+          name: 'contentSection',
           fields: [
+            defineField({ name: 'visible', title: 'Visible', type: 'boolean', initialValue: true }),
             defineField({
-              name: "visible",
-              title: "Visible",
-              type: "boolean",
-              initialValue: true,
-            }),
-            defineField({
-              name: "key",
-              title: "Key",
-              type: "string",
-              description:
-                'Which slot on the page this fills, e.g. "highlight", "ticketsCallout".',
+              name: 'key',
+              title: 'Key',
+              type: 'string',
+              description: 'Which slot on the page this fills, e.g. "highlight", "ticketsCallout".',
               validation: (Rule) => Rule.required(),
             }),
-            defineField({ name: "heading", title: "Heading", type: "string" }),
-            defineField({ name: "body", title: "Body", type: "text", rows: 3 }),
+            defineField({ name: 'heading', title: 'Heading', type: 'string' }),
+            defineField({ name: 'body', title: 'Body', type: 'text', rows: 3 }),
+            defineField({ name: 'ctaLabel', title: 'Call to action label', type: 'string' }),
+            defineField({ name: 'ctaUrl', title: 'Call to action URL', type: 'string' }),
+            defineField({ name: 'disclaimer', title: 'Disclaimer', type: 'string' }),
             defineField({
-              name: "ctaLabel",
-              title: "Call to action label",
-              type: "string",
-            }),
-            defineField({
-              name: "ctaUrl",
-              title: "Call to action URL",
-              type: "string",
-            }),
-            defineField({
-              name: "disclaimer",
-              title: "Disclaimer",
-              type: "string",
-            }),
-            defineField({
-              name: "image",
-              title: "Image",
-              type: "image",
+              name: 'image',
+              title: 'Image',
+              type: 'image',
               options: { hotspot: true },
-              fields: [
-                defineField({ name: "alt", title: "Alt text", type: "string" }),
-              ],
+              fields: [defineField({ name: 'alt', title: 'Alt text', type: 'string' })],
             }),
           ],
           preview: {
-            select: { key: "key", heading: "heading", visible: "visible" },
+            select: { key: 'key', heading: 'heading', visible: 'visible' },
             prepare: ({ key, heading, visible }) => ({
-              title: `${visible === false ? "○ " : ""}${key ?? ""}`,
+              title: `${visible === false ? '○ ' : ''}${key ?? ''}`,
               subtitle: heading,
             }),
           },
@@ -385,36 +313,26 @@ export const pageContent = defineType({
       ],
     }),
     defineField({
-      name: "entries",
-      title: "Additional copy",
-      type: "array",
-      of: [defineArrayMember({ type: "copyEntry" })],
+      name: 'entries',
+      title: 'Additional copy',
+      type: 'array',
+      of: [defineArrayMember({ type: 'copyEntry' })],
       description: `Keyed strings specific to this page. ${INHERITS}`,
     }),
     defineField({
-      name: "seo",
-      title: "SEO overrides (legacy)",
-      type: "seoConfig",
+      name: 'seo',
+      title: 'SEO overrides (legacy)',
+      type: 'seoConfig',
       readOnly: true,
       hidden: ({ value }) => value === undefined,
-      deprecated: {
-        reason:
-          "Use Metadata. Existing values remain readable until consumers migrate.",
-      },
+      deprecated: { reason: 'Use Metadata. Existing values remain readable until consumers migrate.' },
     }),
   ],
   preview: {
-    select: {
-      tenantTitle: "tenant.title",
-      id: "_id",
-      route: "route",
-      heading: "heading",
-    },
+    select: { tenantTitle: 'tenant.title', id: '_id', route: 'route', heading: 'heading' },
     prepare: ({ tenantTitle, id, route, heading }) => ({
-      title: route ?? "Page",
-      subtitle: [scopePreview(id, tenantTitle), heading]
-        .filter(Boolean)
-        .join(" · "),
+      title: route ?? 'Page',
+      subtitle: [scopePreview(id, tenantTitle), heading].filter(Boolean).join(' · '),
     }),
   },
 });
