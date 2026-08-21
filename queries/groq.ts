@@ -33,7 +33,14 @@ const EXPERIENCE_CONFIG_PROJECTION = /* groq */ `{
   }
 }`;
 
-const COPY_PROJECTION = /* groq */ `{ entries[]{ key, value, visible }, legal[]{ slug, title, body, visible } }`;
+const SHARED_CONTENT_PROJECTION = /* groq */ `{
+  navbar,
+  footer,
+  metadata,
+  spreePay,
+  entries[]{ _key, key, value, visible },
+  legal[]{ _key, slug, title, body, visible }
+}`;
 
 const PAGE_PROJECTION = /* groq */ `{
   route,
@@ -57,13 +64,38 @@ export const TENANT_BUNDLE_QUERY = /* groq */ `{
   },
 
   "configDefault":  *[_id == "default.experienceConfig"][0] ${EXPERIENCE_CONFIG_PROJECTION},
-  "configOverride": *[_type == "experienceConfig" && tenant->slug.current == $tenant][0] ${EXPERIENCE_CONFIG_PROJECTION},
+  "configOverrideLegacy": *[_type == "experienceConfig" && tenant->slug.current == $tenant][0] ${EXPERIENCE_CONFIG_PROJECTION},
+  "configOverride": *[_type == "tenant" && slug.current == $tenant][0]{
+    "products": {
+      "hasTicketing": "ticketing" in enabledProducts,
+      "hasVipExperiences": "vip" in enabledProducts,
+      "hasHotels": "hotels" in enabledProducts,
+      "hasSweeps": features.hasSweeps
+    },
+    externalUrls,
+    rewards,
+    payments,
+    topUp,
+    onboarding,
+    seo,
+    "brandAssets": brandAssets {
+      "headerLogo":     headerLogo{ "url": asset->url, "mimeType": asset->mimeType, alt, href },
+      "footerLogo":     footerLogo{ "url": asset->url, "mimeType": asset->mimeType, alt },
+      "favicon":        favicon{ "url": asset->url, "mimeType": asset->mimeType },
+      "openGraphImage": openGraphImage{ "url": asset->url, alt },
+      "browseHeroImage": browseHeroImage{ "url": asset->url, alt, hotspot, crop }
+    }
+  },
 
-  "sharedDefault":  *[_id == "default.sharedContent"][0] ${COPY_PROJECTION},
-  "sharedOverride": *[_type == "sharedContent" && tenant->slug.current == $tenant][0] ${COPY_PROJECTION},
+  "sharedDefault":  *[_id == "default.sharedContent"][0] ${SHARED_CONTENT_PROJECTION},
+  "sharedOverride": *[_type == "sharedContent" && tenant->slug.current == $tenant][0] ${SHARED_CONTENT_PROJECTION},
 
-  "productDefaults":  *[_type == "productContent" && !defined(tenant)]{ product, entries[]{ key, value, visible } },
-  "productOverrides": *[_type == "productContent" && tenant->slug.current == $tenant]{ product, entries[]{ key, value, visible } },
+  "productDefaults":  *[_type == "productContent" && !defined(tenant)]{
+    "modality": coalesce(modality, product), entries[]{ _key, key, value, visible }
+  },
+  "productOverrides": *[_type == "productContent" && tenant->slug.current == $tenant]{
+    "modality": coalesce(modality, product), entries[]{ _key, key, value, visible }
+  },
 
   "pageDefaults":  *[_type == "pageContent" && !defined(tenant)] ${PAGE_PROJECTION},
   "pageOverrides": *[_type == "pageContent" && tenant->slug.current == $tenant] ${PAGE_PROJECTION},
