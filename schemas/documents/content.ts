@@ -18,31 +18,15 @@
  */
 import { defineArrayMember, defineField, defineType } from 'sanity';
 
+import { MODALITY_PAGES, PRODUCTS } from '../../lib/constants';
 import { INHERITS, scopePreview, tenantScopeField } from '../lib/scope';
 
-/** Routes that exist in the apps today. Extend as pages are added. */
-const PAGE_ROUTES = [
-  { title: 'Ticketing — Home', value: 'ticketing/home' },
-  { title: 'Ticketing — Search', value: 'ticketing/search' },
-  { title: 'Ticketing — Browse', value: 'ticketing/browse' },
-  { title: 'Ticketing — Event detail', value: 'ticketing/event' },
-  { title: 'Ticketing — Checkout', value: 'ticketing/checkout' },
-  { title: 'Ticketing — Account', value: 'ticketing/account' },
-  { title: 'VIP — Home', value: 'vip/home' },
-  { title: 'VIP — Membership', value: 'vip/membership' },
-  { title: 'VIP — Profile', value: 'vip/profile' },
-  { title: 'VIP — Sweepstakes', value: 'vip/sweepstakes' },
-  { title: 'Hotels — Home', value: 'hotels/home' },
-  { title: 'Hotels — Search', value: 'hotels/search' },
-  { title: 'Marketing — Travel home', value: 'marketing/travel-home' },
-];
+/** Only the modalities intentionally modeled in this phase. */
+const PAGE_ROUTES = Object.entries(MODALITY_PAGES).flatMap(([modality, pages]) =>
+  pages.map((page) => ({ title: `${modality === 'vip' ? 'VIP' : 'Ticketing'} — ${page.title}`, value: `${modality}/${page.id}` })),
+);
 
-const PRODUCT_OPTIONS = [
-  { title: 'Ticketing', value: 'ticketing' },
-  { title: 'VIP', value: 'vip' },
-  { title: 'Hotels', value: 'hotels' },
-  { title: 'Marketing', value: 'marketing' },
-];
+const PRODUCT_OPTIONS = PRODUCTS.map(({ id, title }) => ({ title, value: id }));
 
 /**
  * A named piece of copy.
@@ -190,6 +174,7 @@ export const productContent = defineType({
       title: 'Modality',
       type: 'string',
       options: { list: PRODUCT_OPTIONS, layout: 'radio' },
+      readOnly: ({ value }) => value !== undefined,
       validation: (Rule) =>
         Rule.custom((value, context) =>
           value || context.document?.product ? true : 'Select a modality.',
@@ -247,6 +232,7 @@ export const pageContent = defineType({
       title: 'Page',
       type: 'string',
       options: { list: PAGE_ROUTES },
+      readOnly: ({ value }) => value !== undefined,
       description: 'Chosen from the routes that exist in the apps — free text would let content point at nothing.',
       validation: (Rule) => Rule.required(),
     }),

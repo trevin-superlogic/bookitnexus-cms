@@ -18,6 +18,38 @@ export const PRODUCTS = [
 export type ProductId = (typeof PRODUCTS)[number]['id'];
 
 /**
+ * The standard page surface every white-label tenant receives.
+ *
+ * These are application routes, not free-form CMS pages. Keeping the list in
+ * one shared module lets the schema, Studio structure, seed script, and API
+ * agree on the same contract.
+ */
+export const MODALITY_PAGES = {
+  ticketing: [
+    { id: 'home', title: 'Homepage' },
+    { id: 'search', title: 'Search' },
+    { id: 'browse', title: 'Browse & category' },
+    { id: 'event', title: 'Event detail' },
+    { id: 'checkout', title: 'Checkout' },
+    { id: 'account', title: 'Account & tickets' },
+  ],
+  vip: [
+    { id: 'home', title: 'Homepage' },
+    { id: 'search', title: 'Search & collections' },
+    { id: 'experience', title: 'Experience detail' },
+    { id: 'sweepstakes', title: 'Sweepstakes' },
+    { id: 'checkout', title: 'Checkout' },
+    { id: 'membership', title: 'Membership' },
+    { id: 'profile', title: 'Profile' },
+  ],
+} as const satisfies Partial<Record<ProductId, readonly { id: string; title: string }[]>>;
+
+export type ModalityPageRoute = {
+  [Modality in keyof typeof MODALITY_PAGES]:
+    `${Modality}/${(typeof MODALITY_PAGES)[Modality][number]['id']}`;
+}[keyof typeof MODALITY_PAGES];
+
+/**
  * Seed data for the tenant documents.
  *
  * `slug` matches `TenantId` in apps/live-tickets/src/tenant.types.ts — it is
