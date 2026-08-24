@@ -32,3 +32,38 @@ export const tenantScopedTemplates: Template<TenantTemplateParameters>[] = TENAN
     }),
   }),
 );
+
+type ModalityTemplateParameters = { tenantId?: string; modality: 'ticketing' | 'vip' };
+type PageTemplateParameters = { tenantId?: string; route: string };
+
+export const MODALITY_CONTENT_TEMPLATE_ID = 'modality-content-for-scope';
+export const PAGE_CONTENT_TEMPLATE_ID = 'page-content-for-scope';
+
+export const standardContentTemplates: Template[] = [
+  {
+    id: MODALITY_CONTENT_TEMPLATE_ID,
+    title: 'Modality settings for scope',
+    schemaType: 'productContent',
+    parameters: [
+      { name: 'tenantId', title: 'Tenant ID', type: 'string' },
+      { name: 'modality', title: 'Modality', type: 'string' },
+    ],
+    value: ({ tenantId, modality }: ModalityTemplateParameters) => ({
+      ...(tenantId ? { tenant: { _type: 'reference', _ref: tenantId } } : {}),
+      modality,
+    }),
+  },
+  {
+    id: PAGE_CONTENT_TEMPLATE_ID,
+    title: 'Standard page for scope',
+    schemaType: 'pageContent',
+    parameters: [
+      { name: 'tenantId', title: 'Tenant ID', type: 'string' },
+      { name: 'route', title: 'Page route', type: 'string' },
+    ],
+    value: ({ tenantId, route }: PageTemplateParameters) => ({
+      ...(tenantId ? { tenant: { _type: 'reference', _ref: tenantId } } : {}),
+      route,
+    }),
+  },
+];

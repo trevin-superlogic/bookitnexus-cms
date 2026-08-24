@@ -5,6 +5,7 @@ import { structureTool } from 'sanity/structure';
 import { resolveDocumentActions } from './actions/validateAndPublish';
 import { BrandImportTool, FoundationImportTool } from './components/FigmaImportTool';
 import { schemaTypes } from './schemas';
+import { standardContentTemplates } from './schemas/templates';
 import { HIDDEN_CREATE_TYPES, defaultDocumentNode, deskStructure } from './structure/deskStructure';
 
 // Same fallback as sanity.cli.ts: the Studio build reads .env.local through
@@ -30,7 +31,15 @@ export default defineConfig({
     types: schemaTypes,
     // Singletons are reachable from the desk at a fixed ID; offering "create
     // new" would let an editor make a second one that nothing reads.
-    templates: (prev) => prev.filter((template) => !HIDDEN_CREATE_TYPES.has(template.schemaType)),
+    templates: (prev) => [
+      ...prev.filter(
+        (template) =>
+          !HIDDEN_CREATE_TYPES.has(template.schemaType) &&
+          template.schemaType !== 'productContent' &&
+          template.schemaType !== 'pageContent',
+      ),
+      ...standardContentTemplates,
+    ],
   },
 
   document: {

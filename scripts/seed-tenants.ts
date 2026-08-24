@@ -10,8 +10,13 @@
  *   npm run seed
  *   npm run seed -- --dry-run
  */
-import { TENANT_SEED } from '../lib/constants.ts';
-import { defaultDocumentId, tenantDocumentId } from '../lib/documentIds.ts';
+import { MODALITY_PAGES, TENANT_SEED } from '../lib/constants.ts';
+import {
+  defaultDocumentId,
+  defaultModalityContentDocumentId,
+  defaultPageContentDocumentId,
+  tenantDocumentId,
+} from '../lib/documentIds.ts';
 import { requireSanityEnv } from './lib/env.ts';
 
 const DEFAULT_TYPES = [
@@ -138,6 +143,114 @@ const DEFAULT_SHARED_COPY = {
   entries: DEFAULT_SHARED_CONTENT.entries,
 };
 
+/** Standard white-label controls shared by every Ticketing and VIP tenant. */
+const DEFAULT_MODALITY_CONTENT = [
+  {
+    _id: defaultModalityContentDocumentId('ticketing'),
+    _type: 'productContent',
+    modality: 'ticketing',
+    ticketing: {
+      _type: 'ticketingContentConfig',
+      homepage: {
+        _type: 'object',
+        searchPlaceholder: 'Search by artist, event or venue',
+        locationPlaceholder: 'Search by city, venue or ZIP',
+        dateFilterLabels: {
+          _type: 'object',
+          tomorrow: 'Tomorrow',
+          thisWeekend: 'This weekend',
+          nextWeekend: 'Next weekend',
+          otherDates: 'Other dates',
+        },
+        collections: [
+          {
+            _type: 'ticketCollection',
+            _key: 'popular-nearby',
+            visible: true,
+            heading: 'Popular near you',
+            sourceType: 'nearby',
+            itemLimit: 12,
+            viewAllLabel: 'View all',
+          },
+        ],
+      },
+      browse: {
+        _type: 'object',
+        resultsHeading: 'Events',
+        emptyHeading: 'No events have been found',
+        emptyBody: 'Try changing your search, location, or filters.',
+      },
+      eventDetail: {
+        _type: 'object',
+        selectTicketsLabel: 'Select tickets',
+        soldOutLabel: 'Sold out',
+        relatedHeading: 'Related events',
+      },
+    },
+  },
+  {
+    _id: defaultModalityContentDocumentId('vip'),
+    _type: 'productContent',
+    modality: 'vip',
+    vip: {
+      _type: 'vipContentConfig',
+      homepage: {
+        _type: 'object',
+        secondaryNavigation: [
+          ['all', 'All'],
+          ['sweeps', 'Sweeps'],
+          ['trending', 'Trending'],
+          ['sports', 'Sports'],
+          ['music', 'Music'],
+          ['culinary', 'Culinary'],
+          ['lifestyle', 'Lifestyle'],
+        ].map(([key, label]) => ({ _type: 'editorialLink', _key: key, visible: true, label })),
+        collections: [
+          ['curated', 'Curated'],
+          ['trending', 'Trending'],
+          ['exclusive', 'Exclusive'],
+          ['lifetime', 'Once in a Lifetime'],
+        ].map(([sourceKey, heading]) => ({
+          _type: 'experienceCollection',
+          _key: sourceKey,
+          visible: true,
+          heading,
+          sourceType: 'tag',
+          sourceKey,
+          itemLimit: 12,
+          viewAllLabel: 'View all',
+        })),
+      },
+      searchPlaceholder: 'Search experiences',
+      searchResults: {
+        _type: 'object',
+        resultsHeading: 'Experiences',
+        emptyHeading: 'No results found',
+        emptyBody: 'Try another search or explore a different category.',
+      },
+      detailPage: {
+        _type: 'object',
+        bookLabel: 'Book now',
+        soldOutLabel: 'Sold out',
+        aboutHeading: 'About this experience',
+        includedHeading: "What's included",
+        relatedHeading: 'Related experiences',
+      },
+    },
+  },
+];
+
+const DEFAULT_PAGE_CONTENT = Object.entries(MODALITY_PAGES).flatMap(([modality, pages]) =>
+  pages.map(({ id }) => {
+    const route = `${modality}/${id}`;
+    return {
+      _id: defaultPageContentDocumentId(route),
+      _type: 'pageContent',
+      route,
+    };
+  }),
+);
+
 const LEGAL_ROUTES = [
   { slug: '/terms', title: 'Terms' },
   { slug: '/privacy-policy', title: 'Privacy policy' },
@@ -189,6 +302,8 @@ async function main(): Promise<void> {
       _type: 'sharedCopy',
       ...DEFAULT_SHARED_COPY,
     },
+    ...DEFAULT_MODALITY_CONTENT,
+    ...DEFAULT_PAGE_CONTENT,
     ...LEGAL_ROUTES.map(({ slug, title }) => ({
       _id: `${defaultDocumentId('legalDocument')}.${slug.slice(1)}`,
       _type: 'legalDocument',
