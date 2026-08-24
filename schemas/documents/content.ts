@@ -20,11 +20,19 @@ import { defineArrayMember, defineField, defineType } from 'sanity';
 
 import { MODALITY_PAGES, PRODUCTS } from '../../lib/constants';
 import { INHERITS, scopePreview, tenantScopeField } from '../lib/scope';
+import { MARKETING_MODULE_TYPES, MARKETING_PAGE_TEMPLATES } from '../objects/marketingContent';
 
-/** Only the modalities intentionally modeled in this phase. */
-const PAGE_ROUTES = Object.entries(MODALITY_PAGES).flatMap(([modality, pages]) =>
-  pages.map((page) => ({ title: `${modality === 'vip' ? 'VIP' : 'Ticketing'} — ${page.title}`, value: `${modality}/${page.id}` })),
-);
+const PRODUCT_TITLES = Object.fromEntries(PRODUCTS.map(({ id, title }) => [id, title]));
+
+const PAGE_ROUTES = [
+  ...Object.entries(MODALITY_PAGES).flatMap(([modality, pages]) =>
+    pages.map((page) => ({
+      title: `${PRODUCT_TITLES[modality] ?? modality} — ${page.title}`,
+      value: `${modality}/${page.id}`,
+    })),
+  ),
+  { title: 'Marketing — Flexible page', value: 'marketing/page' },
+];
 
 const PRODUCT_OPTIONS = PRODUCTS.map(({ id, title }) => ({ title, value: id }));
 
@@ -224,7 +232,7 @@ export const pageContent = defineType({
   name: 'pageContent',
   title: 'Page content',
   type: 'document',
-  description: 'Copy for a single route.',
+  description: 'Copy and approved component composition for one application route or flexible Marketing page.',
   fields: [
     tenantScopeField(),
     defineField({
@@ -235,6 +243,40 @@ export const pageContent = defineType({
       readOnly: ({ value }) => value !== undefined,
       description: 'Chosen from the routes that exist in the apps — free text would let content point at nothing.',
       validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'slug',
+      title: 'Marketing page slug',
+      type: 'slug',
+      hidden: ({ document }) => document?.route !== 'marketing/page',
+      description: 'URL path without a leading slash, for example “home” or “qualification”.',
+      validation: (Rule) =>
+        Rule.custom((value, context) =>
+          context.document?.route !== 'marketing/page' || value?.current
+            ? true
+            : 'A slug is required for Marketing pages.',
+        ),
+    }),
+    defineField({
+      name: 'templateKey',
+      title: 'Marketing page template',
+      type: 'string',
+      hidden: ({ document }) => document?.route !== 'marketing/page',
+      options: { list: [...MARKETING_PAGE_TEMPLATES], layout: 'radio' },
+      description: 'Selects a code-defined starting layout. Modules remain individually editable below.',
+    }),
+    defineField({
+      name: 'campaignKey',
+      title: 'Campaign key',
+      type: 'string',
+      hidden: ({ document }) => document?.route !== 'marketing/page',
+      description: 'Optional stable key for campaign targeting and reporting.',
+    }),
+    defineField({
+      name: 'analyticsKey',
+      title: 'Page analytics key',
+      type: 'string',
+      hidden: ({ document }) => document?.route !== 'marketing/page',
     }),
     defineField({
       name: 'heading',
@@ -258,10 +300,19 @@ export const pageContent = defineType({
         'universal default, so setting just a title here keeps the tenant favicon and social image.',
     }),
     defineField({
-      name: 'sections',
-      title: 'Sections',
+      name: 'modules',
+      title: 'Marketing page modules',
       type: 'array',
-      description: `Ordered content blocks. ${INHERITS}`,
+      hidden: ({ document }) => document?.route !== 'marketing/page',
+      description:
+        'Ordered, approved application components. Sanity controls content and merchandising direction; the app and APIs own live inventory, eligibility, and rendering.',
+      of: MARKETING_MODULE_TYPES.map((type) => defineArrayMember({ type })),
+    }),
+    defineField({
+      name: 'sections',
+      title: 'Legacy sections',
+      type: 'array',
+      description: `Existing simple sections. Use Marketing page modules for new Marketing pages. ${INHERITS}`,
       of: [
         defineArrayMember({
           type: 'object',
@@ -315,10 +366,17 @@ export const pageContent = defineType({
     }),
   ],
   preview: {
-    select: { tenantTitle: 'tenant.title', id: '_id', route: 'route', heading: 'heading' },
-    prepare: ({ tenantTitle, id, route, heading }) => ({
-      title: route ?? 'Page',
-      subtitle: [scopePreview(id, tenantTitle), heading].filter(Boolean).join(' · '),
+    select: {
+      tenantTitle: 'tenant.title',
+      id: '_id',
+      route: 'route',
+      slug: 'slug.current',
+      templateKey: 'templateKey',
+      heading: 'heading',
+    },
+    prepare: ({ tenantTitle, id, route, slug, templateKey, heading }) => ({
+      title: route === 'marketing/page' ? `Marketing /${slug ?? 'untitled'}` : route ?? 'Page',
+      subtitle: [scopePreview(id, tenantTitle), templateKey, heading].filter(Boolean).join(' · '),
     }),
   },
 });
