@@ -95,6 +95,7 @@ const SHARED_CONTENT_PROJECTION = /* groq */ `{
 const IMAGE_PROJECTION = /* groq */ `{
   "url": asset->url,
   "mimeType": asset->mimeType,
+  "metadata": asset->metadata{ lqip, dimensions },
   alt,
   hotspot,
   crop
@@ -112,6 +113,7 @@ const EDITORIAL_LINK_PROJECTION = /* groq */ `{
   visible,
   label,
   url,
+  iconName,
   "iconSvg": iconSvg{ "url": asset->url, "mimeType": asset->mimeType, alt }
 }`;
 
@@ -127,9 +129,10 @@ const DISCOVERY_TILE_PROJECTION = /* groq */ `{
 const MODALITY_CONTENT_PROJECTION = /* groq */ `{
   "modality": coalesce(modality, product),
   ticketing {
+    searchPlaceholder,
+    secondaryNavigation[] ${EDITORIAL_LINK_PROJECTION},
     homepage {
       "hero": hero ${HERO_PROJECTION},
-      searchPlaceholder,
       locationPlaceholder,
       dateFilterLabels,
       collections[]{ _key, visible, heading, sourceType, sourceId, itemLimit, viewAllLabel, viewAllUrl },
@@ -145,21 +148,19 @@ const MODALITY_CONTENT_PROJECTION = /* groq */ `{
       emptyHeading,
       emptyBody
     },
-    eventDetail
   },
   vip {
+    searchPlaceholder,
+    secondaryNavigation[] ${EDITORIAL_LINK_PROJECTION},
     homepage {
       "hero": hero ${HERO_PROJECTION},
-      secondaryNavigation[] ${EDITORIAL_LINK_PROJECTION},
       collections[]{ _key, visible, heading, sourceType, sourceKey, itemLimit, viewAllLabel, viewAllUrl },
       categoryTiles[] ${DISCOVERY_TILE_PROJECTION},
       heading,
       subheading,
       carouselHeadings[]
     },
-    searchPlaceholder,
     searchResults,
-    detailPage,
     sweepstakes {
       "hero": hero ${HERO_PROJECTION},
       heading,
