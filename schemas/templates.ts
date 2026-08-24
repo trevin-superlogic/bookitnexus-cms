@@ -33,11 +33,20 @@ export const tenantScopedTemplates: Template<TenantTemplateParameters>[] = TENAN
   }),
 );
 
-type ModalityTemplateParameters = { tenantId?: string; modality: 'ticketing' | 'vip' };
+type ModalityTemplateParameters = {
+  tenantId?: string;
+  modality: 'ticketing' | 'vip' | 'hotels' | 'marketing';
+};
 type PageTemplateParameters = { tenantId?: string; route: string };
+type MarketingPageTemplateParameters = {
+  tenantId?: string;
+  slug?: string;
+  templateKey?: string;
+};
 
 export const MODALITY_CONTENT_TEMPLATE_ID = 'modality-content-for-scope';
 export const PAGE_CONTENT_TEMPLATE_ID = 'page-content-for-scope';
+export const MARKETING_PAGE_TEMPLATE_ID = 'marketing-page-for-scope';
 
 export const standardContentTemplates: Template[] = [
   {
@@ -64,6 +73,22 @@ export const standardContentTemplates: Template[] = [
     value: ({ tenantId, route }: PageTemplateParameters) => ({
       ...(tenantId ? { tenant: { _type: 'reference', _ref: tenantId } } : {}),
       route,
+    }),
+  },
+  {
+    id: MARKETING_PAGE_TEMPLATE_ID,
+    title: 'Marketing page for scope',
+    schemaType: 'pageContent',
+    parameters: [
+      { name: 'tenantId', title: 'Tenant ID', type: 'string' },
+      { name: 'slug', title: 'Page slug', type: 'string' },
+      { name: 'templateKey', title: 'Page template', type: 'string' },
+    ],
+    value: ({ tenantId, slug, templateKey }: MarketingPageTemplateParameters) => ({
+      ...(tenantId ? { tenant: { _type: 'reference', _ref: tenantId } } : {}),
+      route: 'marketing/page',
+      ...(slug ? { slug: { _type: 'slug', current: slug } } : {}),
+      ...(templateKey ? { templateKey } : {}),
     }),
   },
 ];
