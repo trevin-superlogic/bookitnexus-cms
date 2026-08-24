@@ -35,7 +35,11 @@ import {
   modalityContentDocumentId,
   pageContentDocumentId,
 } from '../lib/documentIds';
-import { MODALITY_CONTENT_TEMPLATE_ID, PAGE_CONTENT_TEMPLATE_ID } from '../schemas/templates';
+import {
+  MARKETING_PAGE_TEMPLATE_ID,
+  MODALITY_CONTENT_TEMPLATE_ID,
+  PAGE_CONTENT_TEMPLATE_ID,
+} from '../schemas/templates';
 
 const FOUNDATION_ID = 'foundationTokens.singleton';
 
@@ -81,6 +85,7 @@ const tenantConfiguration = (S: StructureBuilder, tenantId: string) =>
 const MODELED_MODALITIES = [
   { id: 'ticketing', title: 'Ticketing', pages: MODALITY_PAGES.ticketing },
   { id: 'vip', title: 'VIP', pages: MODALITY_PAGES.vip },
+  { id: 'hotels', title: 'Hotels', pages: MODALITY_PAGES.hotels },
 ] as const;
 
 const modalityBranch = (
@@ -136,15 +141,65 @@ const modalityBranch = (
     );
 };
 
+const marketingBranch = (S: StructureBuilder, tenantId?: string) => {
+  const overviewId = tenantId
+    ? modalityContentDocumentId(tenantId, 'marketing')
+    : defaultModalityContentDocumentId('marketing');
+  const pageFilter = tenantId
+    ? '_type == "pageContent" && route == "marketing/page" && tenant._ref == $tenantId'
+    : '_type == "pageContent" && route == "marketing/page" && !defined(tenant)';
+
+  return S.listItem()
+    .title('Marketing')
+    .id('marketing')
+    .child(
+      S.list()
+        .title('Marketing')
+        .items([
+          S.listItem()
+            .title('Overview & settings')
+            .id('overview')
+            .child(
+              S.document()
+                .title('Marketing — overview & settings')
+                .schemaType('productContent')
+                .documentId(overviewId)
+                .initialValueTemplate(MODALITY_CONTENT_TEMPLATE_ID, {
+                  ...(tenantId ? { tenantId } : {}),
+                  modality: 'marketing',
+                }),
+            ),
+          S.listItem()
+            .title('Pages')
+            .id('pages')
+            .child(
+              S.documentList()
+                .title('Marketing pages')
+                .schemaType('pageContent')
+                .filter(pageFilter)
+                .params(tenantId ? { tenantId } : {})
+                .initialValueTemplates([
+                  S.initialValueTemplateItem(MARKETING_PAGE_TEMPLATE_ID, {
+                    ...(tenantId ? { tenantId } : {}),
+                  }),
+                ])
+                .canHandleIntent(() => true)
+                .apiVersion('2024-10-01'),
+            ),
+        ]),
+    );
+};
+
+const modalityBranches = (S: StructureBuilder, tenantId?: string) => [
+  ...MODELED_MODALITIES.map((modality) => modalityBranch(S, modality, tenantId)),
+  marketingBranch(S, tenantId),
+];
+
 const productBranch = (S: StructureBuilder, tenantId: string) =>
   S.listItem()
     .title('Modality Content')
     .id('productContent')
-    .child(
-      S.list()
-        .title('Modalities')
-        .items(MODELED_MODALITIES.map((modality) => modalityBranch(S, modality, tenantId))),
-    );
+    .child(S.list().title('Modalities').items(modalityBranches(S, tenantId)));
 
 export const deskStructure = (S: StructureBuilder, _context: StructureResolverContext) =>
   S.list()
@@ -206,7 +261,7 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
                 .child(
                   S.list()
                     .title('Modality Content defaults')
-                    .items(MODELED_MODALITIES.map((modality) => modalityBranch(S, modality))),
+                    .items(modalityBranches(S)),
                 ),
             ]),
         ),
