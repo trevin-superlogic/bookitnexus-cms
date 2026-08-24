@@ -9,6 +9,19 @@ import { defineArrayMember, defineField, defineType } from "sanity";
 
 import { INHERITS } from "../lib/scope";
 
+const MATERIAL_NAV_ICONS = [
+  { title: "Home", value: "home" },
+  { title: "Sweepstakes ticket", value: "confirmation_number" },
+  { title: "Trending", value: "auto_awesome" },
+  { title: "Sports", value: "emoji_events" },
+  { title: "Music", value: "headphones" },
+  { title: "Culinary", value: "restaurant" },
+  { title: "Lifestyle", value: "self_improvement" },
+  { title: "Travel", value: "flight" },
+  { title: "Hotel", value: "hotel" },
+  { title: "Shopping", value: "shopping_bag" },
+];
+
 const destinationField = (name = "url", title = "Destination") =>
   defineField({
     name,
@@ -94,12 +107,26 @@ export const editorialLink = defineType({
     }),
     destinationField(),
     defineField({
-      name: "iconSvg",
-      title: "Icon SVG",
-      type: "image",
+      name: "iconName",
+      title: "Icon",
+      type: "string",
       description:
-        "Optional icon. SVG only so it can inherit the current theme colours.",
+        "Material Symbols icon returned as a stable key. The application maps it to a monochrome SVG and applies the active theme colour.",
+      options: { list: MATERIAL_NAV_ICONS },
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: "iconSvg",
+      title: "Icon SVG (legacy)",
+      type: "image",
+      description: "Replaced by the Material Symbols icon selector.",
       options: { accept: ".svg", hotspot: false },
+      readOnly: true,
+      hidden: ({ value }) => value === undefined,
+      deprecated: {
+        reason:
+          "Use Icon. The application now renders a controlled monochrome Material Symbols SVG from the selected key.",
+      },
       fields: [
         defineField({ name: "alt", title: "Accessible label", type: "string" }),
       ],
@@ -318,6 +345,19 @@ export const vipContentConfig = defineType({
   options: { collapsible: true, collapsed: false },
   fields: [
     defineField({
+      name: "searchPlaceholder",
+      title: "Search hint",
+      type: "string",
+      description: `Placeholder used anywhere Experiences search appears. ${INHERITS}`,
+    }),
+    defineField({
+      name: "secondaryNavigation",
+      title: "Secondary navigation",
+      type: "array",
+      description: `Modality-wide ordered navigation shown across Experiences surfaces, including icon, label, and destination. ${INHERITS}`,
+      of: [defineArrayMember({ type: "editorialLink" })],
+    }),
+    defineField({
       name: "homepage",
       title: "Homepage",
       type: "object",
@@ -326,10 +366,13 @@ export const vipContentConfig = defineType({
         defineField({ name: "hero", title: "Hero", type: "modalityHero" }),
         defineField({
           name: "secondaryNavigation",
-          title: "Discovery navigation",
+          title: "Discovery navigation (legacy)",
           type: "array",
-          description: `Ordered links below search, such as All, Sweeps, Trending, Sports, Music, Culinary, and Lifestyle. ${INHERITS}`,
+          description: "Replaced by modality-wide Secondary navigation.",
           of: [defineArrayMember({ type: "editorialLink" })],
+          readOnly: true,
+          hidden: ({ value }) => value === undefined,
+          deprecated: { reason: "Use Secondary navigation at the modality level." },
         }),
         defineField({
           name: "collections",
@@ -376,12 +419,6 @@ export const vipContentConfig = defineType({
       ],
     }),
     defineField({
-      name: "searchPlaceholder",
-      title: "Search hint",
-      type: "string",
-      description: `Placeholder shown in Experiences search, e.g. "Search experiences". ${INHERITS}`,
-    }),
-    defineField({
       name: "searchResults",
       title: "Search and listing pages",
       type: "object",
@@ -410,9 +447,15 @@ export const vipContentConfig = defineType({
     }),
     defineField({
       name: "detailPage",
-      title: "Experience detail",
+      title: "Experience detail (legacy)",
       type: "object",
       options: { collapsible: true, collapsed: true },
+      readOnly: true,
+      hidden: ({ value }) => value === undefined,
+      deprecated: {
+        reason:
+          "Experience detail content is owned by the admin system and sale-product API.",
+      },
       fields: [
         defineField({
           name: "bookLabel",
@@ -484,6 +527,19 @@ export const ticketingContentConfig = defineType({
   options: { collapsible: true, collapsed: false },
   fields: [
     defineField({
+      name: "searchPlaceholder",
+      title: "Search hint",
+      type: "string",
+      description: `Placeholder used anywhere Ticketing search appears. ${INHERITS}`,
+    }),
+    defineField({
+      name: "secondaryNavigation",
+      title: "Secondary navigation",
+      type: "array",
+      description: `Optional modality-wide ordered navigation, including icon, label, and destination. ${INHERITS}`,
+      of: [defineArrayMember({ type: "editorialLink" })],
+    }),
+    defineField({
       name: "homepage",
       title: "Homepage",
       type: "object",
@@ -492,9 +548,12 @@ export const ticketingContentConfig = defineType({
         defineField({ name: "hero", title: "Hero", type: "modalityHero" }),
         defineField({
           name: "searchPlaceholder",
-          title: "Event search hint",
+          title: "Event search hint (legacy)",
           type: "string",
-          description: INHERITS,
+          description: "Replaced by modality-wide Search hint.",
+          readOnly: true,
+          hidden: ({ value }) => value === undefined,
+          deprecated: { reason: "Use Search hint at the modality level." },
         }),
         defineField({
           name: "locationPlaceholder",
@@ -613,9 +672,14 @@ export const ticketingContentConfig = defineType({
     }),
     defineField({
       name: "eventDetail",
-      title: "Event detail",
+      title: "Event detail (legacy)",
       type: "object",
       options: { collapsible: true, collapsed: true },
+      readOnly: true,
+      hidden: ({ value }) => value === undefined,
+      deprecated: {
+        reason: "Ticket detail content is owned by the Ticketing API and product UI.",
+      },
       fields: [
         defineField({
           name: "selectTicketsLabel",
