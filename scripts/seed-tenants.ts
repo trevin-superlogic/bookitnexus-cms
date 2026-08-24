@@ -151,9 +151,9 @@ const DEFAULT_MODALITY_CONTENT = [
     modality: 'ticketing',
     ticketing: {
       _type: 'ticketingContentConfig',
+      searchPlaceholder: 'Search by artist, event or venue',
       homepage: {
         _type: 'object',
-        searchPlaceholder: 'Search by artist, event or venue',
         locationPlaceholder: 'Search by city, venue or ZIP',
         dateFilterLabels: {
           _type: 'object',
@@ -180,12 +180,6 @@ const DEFAULT_MODALITY_CONTENT = [
         emptyHeading: 'No events have been found',
         emptyBody: 'Try changing your search, location, or filters.',
       },
-      eventDetail: {
-        _type: 'object',
-        selectTicketsLabel: 'Select tickets',
-        soldOutLabel: 'Sold out',
-        relatedHeading: 'Related events',
-      },
     },
   },
   {
@@ -194,17 +188,24 @@ const DEFAULT_MODALITY_CONTENT = [
     modality: 'vip',
     vip: {
       _type: 'vipContentConfig',
+      searchPlaceholder: 'Search experiences',
+      secondaryNavigation: [
+        ['all', 'All', 'home'],
+        ['sweeps', 'Sweeps', 'confirmation_number'],
+        ['trending', 'Trending', 'auto_awesome'],
+        ['sports', 'Sports', 'emoji_events'],
+        ['music', 'Music', 'headphones'],
+        ['culinary', 'Culinary', 'restaurant'],
+        ['lifestyle', 'Lifestyle', 'self_improvement'],
+      ].map(([key, label, iconName]) => ({
+        _type: 'editorialLink',
+        _key: key,
+        visible: true,
+        label,
+        iconName,
+      })),
       homepage: {
         _type: 'object',
-        secondaryNavigation: [
-          ['all', 'All'],
-          ['sweeps', 'Sweeps'],
-          ['trending', 'Trending'],
-          ['sports', 'Sports'],
-          ['music', 'Music'],
-          ['culinary', 'Culinary'],
-          ['lifestyle', 'Lifestyle'],
-        ].map(([key, label]) => ({ _type: 'editorialLink', _key: key, visible: true, label })),
         collections: [
           ['curated', 'Curated'],
           ['trending', 'Trending'],
@@ -221,20 +222,11 @@ const DEFAULT_MODALITY_CONTENT = [
           viewAllLabel: 'View all',
         })),
       },
-      searchPlaceholder: 'Search experiences',
       searchResults: {
         _type: 'object',
         resultsHeading: 'Experiences',
         emptyHeading: 'No results found',
         emptyBody: 'Try another search or explore a different category.',
-      },
-      detailPage: {
-        _type: 'object',
-        bookLabel: 'Book now',
-        soldOutLabel: 'Sold out',
-        aboutHeading: 'About this experience',
-        includedHeading: "What's included",
-        relatedHeading: 'Related experiences',
       },
     },
   },
