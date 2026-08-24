@@ -18,6 +18,7 @@ import {
   ticketingContentConfig,
   vipContentConfig,
 } from './objects/modalityContent';
+import { marketingPageModules } from './objects/marketingContent';
 import { navigationConfig, navItem } from './objects/navigation';
 import { rewardsConfig } from './objects/rewards';
 import {
@@ -78,6 +79,7 @@ export const schemaTypes: SchemaTypeDefinition[] = [
   discoveryTile,
   vipContentConfig,
   ticketingContentConfig,
+  ...marketingPageModules,
   brandAssets,
   seoConfig,
 
