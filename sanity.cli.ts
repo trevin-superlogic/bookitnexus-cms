@@ -27,6 +27,12 @@ export default defineCliConfig({
    */
   studioHost: process.env.SANITY_STUDIO_HOSTNAME,
 
+  /** Pin deployments to the original BookitCMS Studio application. */
+  deployment: {
+    appId: process.env.SANITY_STUDIO_APP_ID ?? 'm882ejkvl9echsn8tkslwjwv',
+    autoUpdates: true,
+  },
+
   /** Vite needs this to resolve the .ts extensions used across lib/. */
   vite: (config) => ({
     ...config,
