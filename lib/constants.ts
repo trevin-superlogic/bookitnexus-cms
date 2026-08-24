@@ -18,11 +18,12 @@ export const PRODUCTS = [
 export type ProductId = (typeof PRODUCTS)[number]['id'];
 
 /**
- * The standard page surface every white-label tenant receives.
+ * The standard fixed application surfaces every white-label tenant receives.
  *
  * These are application routes, not free-form CMS pages. Keeping the list in
  * one shared module lets the schema, Studio structure, seed script, and API
- * agree on the same contract.
+ * agree on the same contract. Marketing pages are flexible, slug-based pages
+ * and are modeled separately.
  */
 export const MODALITY_PAGES = {
   ticketing: [
@@ -39,6 +40,10 @@ export const MODALITY_PAGES = {
     { id: 'checkout', title: 'Checkout' },
     { id: 'membership', title: 'Membership' },
     { id: 'profile', title: 'Profile' },
+  ],
+  hotels: [
+    { id: 'home', title: 'Homepage' },
+    { id: 'search', title: 'Search & results' },
   ],
 } as const satisfies Partial<Record<ProductId, readonly { id: string; title: string }[]>>;
 
