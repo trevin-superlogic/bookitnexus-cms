@@ -172,10 +172,31 @@ const MODALITY_CONTENT_PROJECTION = /* groq */ `{
 }`;
 
 const PAGE_PROJECTION = /* groq */ `{
+  _id,
+  title,
+  modality,
   route,
+  slug,
+  templateKey,
+  templateVersion,
+  campaignKey,
+  analyticsKey,
   heading,
   subheading,
-  sections[]{ key, heading, body, ctaLabel, ctaUrl, disclaimer, visible, "image": image{ "url": asset->url, alt } },
+  modules[]{
+    ...,
+    "image": image ${IMAGE_PROJECTION},
+    "media": media ${IMAGE_PROJECTION}
+  },
+  sections[]{
+    ...,
+    "image": image ${IMAGE_PROJECTION},
+    "mobileImage": mobileImage ${IMAGE_PROJECTION},
+    "backgroundImage": backgroundImage ${IMAGE_PROJECTION},
+    items[]{..., "image": image ${IMAGE_PROJECTION}},
+    tiles[]{..., "image": image ${IMAGE_PROJECTION}},
+    logos[]{..., "image": image ${IMAGE_PROJECTION}}
+  },
   entries[]{ key, value, visible },
   "metadata": metadata ${METADATA_PROJECTION},
   seo
@@ -273,3 +294,4 @@ export const TOKEN_HEALTH_QUERY = /* groq */ `
     "issues": validation.issues[severity == "error"]{ code, subject, message }
   } | order(tenant asc)
 `;
+

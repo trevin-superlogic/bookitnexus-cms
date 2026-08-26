@@ -19,8 +19,14 @@
 import { defineArrayMember, defineField, defineType } from 'sanity';
 
 import { MODALITY_PAGES, PRODUCTS } from '../../lib/constants';
+import {
+  PAGE_TEMPLATE_OPTIONS,
+  modalityFromRoute,
+  pageTemplate,
+} from '../../lib/pageTemplates';
 import { INHERITS, scopePreview, tenantScopeField } from '../lib/scope';
-import { MARKETING_MODULE_TYPES, MARKETING_PAGE_TEMPLATES } from '../objects/marketingContent';
+import { MARKETING_MODULE_TYPES } from '../objects/marketingContent';
+import { PAGE_SECTION_TYPE_NAMES } from '../objects/pageSections';
 
 const PRODUCT_TITLES = Object.fromEntries(PRODUCTS.map(({ id, title }) => [id, title]));
 
@@ -222,34 +228,176 @@ export const productContent = defineType({
   preview: {
     select: { tenantTitle: 'tenant.title', id: '_id', modality: 'modality', product: 'product', entries: 'entries' },
     prepare: ({ tenantTitle, id, modality, product, entries }) => ({
-      title: `${modality ?? product ?? 'Modality'} — shared content`,
+      title: `${tenantTitle ? `${tenantTitle} · ` : ''}${modality ?? product ?? 'Modality'} — shared content`,
       subtitle: `${scopePreview(id, tenantTitle)} · ${(entries ?? []).length} entries`,
     }),
   },
 });
 
+const LEGACY_CONTENT_SECTION = defineArrayMember({
+  type: 'object',
+  name: 'contentSection',
+  title: 'Legacy generic section',
+  fields: [
+    defineField({ name: 'visible', title: 'Visible', type: 'boolean', initialValue: true }),
+    defineField({ name: 'key', title: 'Key', type: 'string', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'heading', title: 'Heading', type: 'string' }),
+    defineField({ name: 'body', title: 'Body', type: 'text', rows: 3 }),
+    defineField({ name: 'ctaLabel', title: 'Call to action label', type: 'string' }),
+    defineField({ name: 'ctaUrl', title: 'Call to action URL', type: 'string' }),
+    defineField({ name: 'disclaimer', title: 'Disclaimer', type: 'string' }),
+    defineField({
+      name: 'image',
+      title: 'Image',
+      type: 'image',
+      options: { hotspot: true },
+      fields: [defineField({ name: 'alt', title: 'Alt text', type: 'string' })],
+    }),
+  ],
+  preview: {
+    select: { key: 'key', heading: 'heading', visible: 'visible' },
+    prepare: ({ key, heading, visible }) => ({
+      title: `${visible === false ? '○ ' : ''}${key ?? 'Legacy section'}`,
+      subtitle: heading,
+    }),
+  },
+});
+
+const UNIVERSAL_SECTION_TYPES = [
+  ...PAGE_SECTION_TYPE_NAMES,
+  'marketingQualificationHero',
+  'marketingQualificationOptions',
+  'marketingTrustMetrics',
+] as const;
+
+const SECTION_INSERT_GROUPS = [
+  {
+    name: 'shared',
+    title: 'Shared building blocks',
+    of: ['editorialIntroSection', 'commerceShelfSection', 'valuePropositionGridSection', 'promoBannerSection', 'faqSection', 'mediaSplitSection', 'ctaBannerSection'],
+  },
+  { name: 'marketing', title: 'Marketing', of: ['marketingHeroSearchSection', 'dealGridSection', 'marketingQualificationHero', 'marketingQualificationOptions', 'marketingTrustMetrics'] },
+  { name: 'ticketing', title: 'Tickets', of: ['ticketHeroSearchSection', 'ticketDiscoveryControlsSection', 'ticketCollectionGroupSection', 'ticketPopularCitiesSection'] },
+  { name: 'vip', title: 'VIP Experiences', of: ['vipHeroSearchSection', 'vipSecondaryNavigationSection', 'vipExperienceCollectionSection', 'vipCategoryGridSection'] },
+  { name: 'hotels', title: 'Stays', of: ['hotelHeroSearchSection', 'appDownloadPromoSection', 'brandLogoStripSection'] },
+] as const;
+
+const sectionsField = (includeLegacy: boolean) =>
+  defineField({
+    name: 'sections',
+    title: 'Sections',
+    type: 'array',
+    group: 'content',
+    description:
+      'The ordered components rendered by this page. Every section maps to a registered frontend component; live inventory and transactional behavior remain application-owned.',
+    hidden: ({ document }) => pageTemplate(document?.templateKey as string | undefined)?.structurePolicy === 'locked',
+    of: [
+      ...UNIVERSAL_SECTION_TYPES.map((type) => defineArrayMember({ type })),
+      ...(includeLegacy ? [LEGACY_CONTENT_SECTION] : []),
+    ],
+    options: {
+      insertMenu: {
+        filter: true,
+        groups: [
+          ...SECTION_INSERT_GROUPS.map((group) => ({ ...group, of: [...group.of] })),
+          ...(includeLegacy ? [{ name: 'legacy', title: 'Legacy — migration only', of: ['contentSection'] }] : []),
+        ],
+        views: [{ name: 'list' }],
+      },
+    },
+    validation: (Rule) =>
+      Rule.custom((sections, context) => {
+        if (!Array.isArray(sections)) return true;
+        const templateKey = context.document?.templateKey as string | undefined;
+        const definition = pageTemplate(templateKey);
+        if (!definition) return true;
+
+        const typedSections = sections as Array<{ _type?: string; slotKey?: string }>;
+        const unsupported = typedSections
+          .filter((section) => section._type && !definition.allowedSectionTypes.includes(section._type))
+          .map((section) => section._type);
+        if (unsupported.length > 0) {
+          return `This template does not support: ${Array.from(new Set(unsupported)).join(', ')}.`;
+        }
+
+        const slots = new Set(typedSections.map((section) => section.slotKey).filter(Boolean));
+        const missing = definition.requiredSlots.filter((slot) => !slots.has(slot));
+        return missing.length > 0 ? `Required template slots are missing: ${missing.join(', ')}.` : true;
+      }),
+  });
+
 export const pageContent = defineType({
   name: 'pageContent',
-  title: 'Page content',
+  title: 'Page',
   type: 'document',
-  description: 'Copy and approved component composition for one application route or flexible Marketing page.',
+  description: 'A tenant-local page composed from approved frontend components.',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'settings', title: 'Settings' },
+    { name: 'metadata', title: 'Metadata' },
+  ],
   fields: [
-    tenantScopeField(),
+    {
+      ...tenantScopeField(),
+      hidden: true,
+    },
+    defineField({
+      name: 'title',
+      title: 'Internal page title',
+      type: 'string',
+      group: 'content',
+      description: 'Shown to editors in Sanity. This is not automatically rendered on the site.',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'modality',
+      title: 'Modality',
+      type: 'string',
+      hidden: true,
+      readOnly: true,
+      options: {
+        list: [
+          { title: 'Marketing', value: 'marketing' },
+          { title: 'VIP Experiences', value: 'vip' },
+          { title: 'Ticketing', value: 'ticketing' },
+          { title: 'Stays', value: 'hotels' },
+        ],
+      },
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const expected = modalityFromRoute(context.document?.route as string | undefined);
+          return !expected || value === expected ? true : `This page belongs to the ${expected} modality.`;
+        }),
+    }),
+    defineField({
+      name: 'templateKey',
+      title: 'Page template',
+      type: 'string',
+      group: 'content',
+      options: { list: PAGE_TEMPLATE_OPTIONS },
+      readOnly: ({ value }) => value !== undefined,
+      description: 'Defines the route policy, supported components, required slots, and structural flexibility.',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({ name: 'templateVersion', title: 'Template version', type: 'number', hidden: true, readOnly: true }),
     defineField({
       name: 'route',
-      title: 'Page',
+      title: 'Application route',
       type: 'string',
+      group: 'settings',
       options: { list: PAGE_ROUTES },
       readOnly: ({ value }) => value !== undefined,
-      description: 'Chosen from the routes that exist in the apps — free text would let content point at nothing.',
+      description: 'Assigned by the folder and template. Fixed application routes cannot be changed by an editor.',
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'slug',
-      title: 'Marketing page slug',
+      title: 'Page slug',
       type: 'slug',
-      hidden: ({ document }) => document?.route !== 'marketing/page',
-      description: 'URL path without a leading slash, for example “home” or “qualification”.',
+      group: 'settings',
+      hidden: ({ document }) => document?.route !== 'marketing/page' || document?.templateKey === 'marketing-home-v1',
+      readOnly: ({ document }) => pageTemplate(document?.templateKey as string | undefined)?.routePolicy === 'locked',
+      description: 'URL path without a leading slash. Only templates with an editor-controlled route expose this field.',
       validation: (Rule) =>
         Rule.custom((value, context) =>
           context.document?.route !== 'marketing/page' || value?.current
@@ -257,18 +405,12 @@ export const pageContent = defineType({
             : 'A slug is required for Marketing pages.',
         ),
     }),
-    defineField({
-      name: 'templateKey',
-      title: 'Marketing page template',
-      type: 'string',
-      hidden: ({ document }) => document?.route !== 'marketing/page',
-      options: { list: [...MARKETING_PAGE_TEMPLATES], layout: 'radio' },
-      description: 'Selects a code-defined starting layout. Modules remain individually editable below.',
-    }),
+    sectionsField(true),
     defineField({
       name: 'campaignKey',
       title: 'Campaign key',
       type: 'string',
+      group: 'settings',
       hidden: ({ document }) => document?.route !== 'marketing/page',
       description: 'Optional stable key for campaign targeting and reporting.',
     }),
@@ -276,83 +418,51 @@ export const pageContent = defineType({
       name: 'analyticsKey',
       title: 'Page analytics key',
       type: 'string',
-      hidden: ({ document }) => document?.route !== 'marketing/page',
+      group: 'settings',
     }),
     defineField({
       name: 'heading',
-      title: 'Heading',
+      title: 'Page heading (legacy)',
       type: 'string',
+      group: 'content',
+      hidden: ({ document }) => Array.isArray(document?.sections) && document.sections.length > 0,
+      deprecated: { reason: 'Move this value into the page hero section.' },
       description: `The page's main heading. ${INHERITS}`,
     }),
     defineField({
       name: 'subheading',
-      title: 'Subheading',
+      title: 'Page subheading (legacy)',
       type: 'text',
       rows: 3,
+      group: 'content',
+      hidden: ({ document }) => Array.isArray(document?.sections) && document.sections.length > 0,
+      deprecated: { reason: 'Move this value into the page hero section.' },
       description: INHERITS,
     }),
     defineField({
       name: 'metadata',
       title: 'Metadata',
       type: 'siteMetadata',
+      group: 'metadata',
       description:
         'Overrides for this route only. Anything left empty falls through to tenant Shared Content, then to the ' +
         'universal default, so setting just a title here keeps the tenant favicon and social image.',
     }),
     defineField({
       name: 'modules',
-      title: 'Marketing page modules',
+      title: 'Marketing modules (legacy)',
       type: 'array',
-      hidden: ({ document }) => document?.route !== 'marketing/page',
-      description:
-        'Ordered, approved application components. Sanity controls content and merchandising direction; the app and APIs own live inventory, eligibility, and rendering.',
+      group: 'content',
+      hidden: ({ document }) => document?.route !== 'marketing/page' || (Array.isArray(document?.sections) && document.sections.length > 0),
+      readOnly: true,
+      deprecated: { reason: 'Migrated to universal Sections.' },
       of: MARKETING_MODULE_TYPES.map((type) => defineArrayMember({ type })),
     }),
     defineField({
-      name: 'sections',
-      title: 'Legacy sections',
-      type: 'array',
-      description: `Existing simple sections. Use Marketing page modules for new Marketing pages. ${INHERITS}`,
-      of: [
-        defineArrayMember({
-          type: 'object',
-          name: 'contentSection',
-          fields: [
-            defineField({ name: 'visible', title: 'Visible', type: 'boolean', initialValue: true }),
-            defineField({
-              name: 'key',
-              title: 'Key',
-              type: 'string',
-              description: 'Which slot on the page this fills, e.g. "highlight", "ticketsCallout".',
-              validation: (Rule) => Rule.required(),
-            }),
-            defineField({ name: 'heading', title: 'Heading', type: 'string' }),
-            defineField({ name: 'body', title: 'Body', type: 'text', rows: 3 }),
-            defineField({ name: 'ctaLabel', title: 'Call to action label', type: 'string' }),
-            defineField({ name: 'ctaUrl', title: 'Call to action URL', type: 'string' }),
-            defineField({ name: 'disclaimer', title: 'Disclaimer', type: 'string' }),
-            defineField({
-              name: 'image',
-              title: 'Image',
-              type: 'image',
-              options: { hotspot: true },
-              fields: [defineField({ name: 'alt', title: 'Alt text', type: 'string' })],
-            }),
-          ],
-          preview: {
-            select: { key: 'key', heading: 'heading', visible: 'visible' },
-            prepare: ({ key, heading, visible }) => ({
-              title: `${visible === false ? '○ ' : ''}${key ?? ''}`,
-              subtitle: heading,
-            }),
-          },
-        }),
-      ],
-    }),
-    defineField({
       name: 'entries',
-      title: 'Additional copy',
+      title: 'Additional keyed copy (legacy)',
       type: 'array',
+      group: 'settings',
       of: [defineArrayMember({ type: 'copyEntry' })],
       description: `Keyed strings specific to this page. ${INHERITS}`,
     }),
@@ -360,6 +470,7 @@ export const pageContent = defineType({
       name: 'seo',
       title: 'SEO overrides (legacy)',
       type: 'seoConfig',
+      group: 'metadata',
       readOnly: true,
       hidden: ({ value }) => value === undefined,
       deprecated: { reason: 'Use Metadata. Existing values remain readable until consumers migrate.' },
@@ -372,11 +483,56 @@ export const pageContent = defineType({
       route: 'route',
       slug: 'slug.current',
       templateKey: 'templateKey',
-      heading: 'heading',
+      title: 'title',
+      modality: 'modality',
     },
-    prepare: ({ tenantTitle, id, route, slug, templateKey, heading }) => ({
-      title: route === 'marketing/page' ? `Marketing /${slug ?? 'untitled'}` : route ?? 'Page',
-      subtitle: [scopePreview(id, tenantTitle), templateKey, heading].filter(Boolean).join(' · '),
+    prepare: ({ tenantTitle, id, route, slug, templateKey, title, modality }) => ({
+      title: `${tenantTitle ? `${tenantTitle} · ` : ''}${title || (route === 'marketing/page' ? `Marketing /${slug ?? 'untitled'}` : route ?? 'Page')}`,
+      subtitle: [scopePreview(id, tenantTitle), modality ?? modalityFromRoute(route), templateKey].filter(Boolean).join(' · '),
     }),
   },
 });
+
+export const pageBlueprint = defineType({
+  name: 'pageBlueprint',
+  title: 'Page blueprint',
+  type: 'document',
+  description: 'A reusable, tenant-neutral starting point for creating tenant-local pages.',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'settings', title: 'Settings' },
+    { name: 'metadata', title: 'Metadata defaults' },
+  ],
+  fields: [
+    defineField({ name: 'title', title: 'Blueprint title', type: 'string', group: 'content', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'description', title: 'Description for editors', type: 'text', rows: 3, group: 'content' }),
+    defineField({
+      name: 'modality',
+      title: 'Compatible modality',
+      type: 'string',
+      group: 'settings',
+      readOnly: ({ value }) => value !== undefined,
+      options: { list: [{ title: 'Marketing', value: 'marketing' }, { title: 'VIP Experiences', value: 'vip' }, { title: 'Ticketing', value: 'ticketing' }, { title: 'Stays', value: 'hotels' }] },
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'templateKey',
+      title: 'Structural template',
+      type: 'string',
+      group: 'settings',
+      readOnly: ({ value }) => value !== undefined,
+      options: { list: PAGE_TEMPLATE_OPTIONS },
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({ name: 'version', title: 'Blueprint version', type: 'number', group: 'settings', initialValue: 1, validation: (Rule) => Rule.integer().min(1).required() }),
+    defineField({ name: 'defaultSlug', title: 'Suggested slug', type: 'slug', group: 'settings' }),
+    sectionsField(false),
+    defineField({ name: 'metadata', title: 'Metadata defaults', type: 'siteMetadata', group: 'metadata' }),
+    defineField({ name: 'sourcePage', title: 'Created from page', type: 'reference', to: [{ type: 'pageContent' }], group: 'settings', readOnly: true }),
+  ],
+  preview: {
+    select: { title: 'title', modality: 'modality', templateKey: 'templateKey', version: 'version' },
+    prepare: ({ title, modality, templateKey, version }) => ({ title, subtitle: [modality, templateKey, `v${version ?? 1}`].filter(Boolean).join(' · ') }),
+  },
+});
+

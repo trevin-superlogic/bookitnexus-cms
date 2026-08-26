@@ -110,19 +110,26 @@ export async function resolveTenantBundle(
     };
   }
 
-  // Page content, keyed by route.
+  // Page content, keyed by application route. Flexible Marketing pages need
+  // their slug in the key; otherwise every Marketing page collapses onto the
+  // single literal route "marketing/page" and only one survives resolution.
   const pages: Record<string, unknown> = {};
-  const routes = new Set<string>([
-    ...(raw.pageDefaults ?? []).map((p: any) => p.route),
-    ...(raw.pageOverrides ?? []).map((p: any) => p.route),
+  const pageKey = (page: any): string | undefined => {
+    if (!page?.route) return undefined;
+    if (page.route !== 'marketing/page') return page.route;
+    return page.slug?.current ? `marketing/${page.slug.current}` : undefined;
+  };
+  const pageKeys = new Set<string>([
+    ...(raw.pageDefaults ?? []).map(pageKey),
+    ...(raw.pageOverrides ?? []).map(pageKey),
   ]);
-  for (const route of routes) {
-    if (!route) continue;
-    const base = (raw.pageDefaults ?? []).find((p: any) => p.route === route);
-    const override = (raw.pageOverrides ?? []).find((p: any) => p.route === route);
+  for (const key of pageKeys) {
+    if (!key) continue;
+    const base = (raw.pageDefaults ?? []).find((p: any) => pageKey(p) === key);
+    const override = (raw.pageOverrides ?? []).find((p: any) => pageKey(p) === key);
     const merged = resolveSection<Record<string, unknown>>(base ?? {}, override ?? {});
-    warnings.push(...merged.warnings.map((w) => ({ ...w, path: `${route}.${w.path}` })));
-    pages[route] = merged.value;
+    warnings.push(...merged.warnings.map((w) => ({ ...w, path: `${key}.${w.path}` })));
+    pages[key] = merged.value;
   }
 
   // ── Theme: universal default + tenant override ───────────────────────────
@@ -192,3 +199,4 @@ export async function resolveTenantBundle(
     warnings,
   };
 }
+

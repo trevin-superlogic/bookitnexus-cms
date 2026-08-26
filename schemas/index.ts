@@ -2,7 +2,7 @@ import type { SchemaTypeDefinition } from 'sanity';
 
 import { brand, brandRole } from './documents/brand';
 import { brandTheme, foundationTokens } from './documents/brandTheme';
-import { copyEntry, pageContent, productContent, sharedContent } from './documents/content';
+import { copyEntry, pageBlueprint, pageContent, productContent, sharedContent } from './documents/content';
 import { experienceConfig } from './documents/experienceConfig';
 import { tenant } from './documents/tenant';
 import { legalDocument, paymentSettings, sharedCopy, siteNavigation, siteSettings } from './documents/siteContent';
@@ -19,6 +19,7 @@ import {
   vipContentConfig,
 } from './objects/modalityContent';
 import { marketingPageModules } from './objects/marketingContent';
+import { pageSectionTypes } from './objects/pageSections';
 import { navigationConfig, navItem } from './objects/navigation';
 import { rewardsConfig } from './objects/rewards';
 import {
@@ -49,6 +50,7 @@ export const schemaTypes: SchemaTypeDefinition[] = [
   sharedCopy,
   productContent,
   pageContent,
+  pageBlueprint,
 
   // Objects — configuration
   rewardsConfig,
@@ -80,6 +82,7 @@ export const schemaTypes: SchemaTypeDefinition[] = [
   vipContentConfig,
   ticketingContentConfig,
   ...marketingPageModules,
+  ...pageSectionTypes,
   brandAssets,
   seoConfig,
 
@@ -96,3 +99,4 @@ export const schemaTypes: SchemaTypeDefinition[] = [
   compiledTheme,
   validationReport,
 ];
+

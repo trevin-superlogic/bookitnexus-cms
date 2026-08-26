@@ -19,8 +19,9 @@
     3. Placeholders for images whose local files are missing, styled from
        tokens so they read as part of the design rather than as breakage.
 
-  Values arrive by localStorage for the first paint and BroadcastChannel for
-  live updates, so editing a colour in the Studio repaints this tab as you type.
+  Values arrive by localStorage/BroadcastChannel when this page is served by
+  the Studio, and by postMessage when the local preview server uses a separate
+  origin. Editing a colour in the Studio repaints this tab as you type.
 -->
 <style>
   :root { color-scheme: light; }
@@ -78,6 +79,7 @@
   // scripts/prepare-previews.mjs), so nothing is reconstructed here.
   var CHANNEL = 'bookitcms-tokens';
   var STORE = 'bookitcms.preview.css';
+  var studioOrigin = params.get('studioOrigin') || location.origin;
 
   document.getElementById('tenantName').textContent = tenant;
   // The saved pages came from AIR Shop (Moca); everything else is a re-skin.
@@ -366,6 +368,17 @@
     setLive(false, 'live updates need a modern browser');
   }
 
+  window.addEventListener('message', function (event) {
+    if (event.origin !== studioOrigin) return;
+    var data = event.data || {};
+    if (data.type !== CHANNEL || !data.css) return;
+    if (data.tenant && tenant && data.tenant !== tenant) return;
+    currentCss = data.css;
+    try { localStorage.setItem(STORE, currentCss); } catch (e) {}
+    apply();
+    setLive(true, 'live — updated ' + new Date().toLocaleTimeString());
+  });
+
   document.getElementById('reload').addEventListener('click', function () { iframe.src = FILE[product]; });
 
   /**
@@ -435,3 +448,4 @@
 </script>
 </body>
 </html>
+

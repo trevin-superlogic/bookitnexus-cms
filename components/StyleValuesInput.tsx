@@ -20,13 +20,16 @@
  * this show up in the product?"), which land in a later pass — it is rendered
  * inactive rather than omitted so the row layout does not shift when it works.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Button, Card, Flex, Stack, Text, TextInput, Tooltip } from '@sanity/ui';
 import { ChevronDownIcon, LaunchIcon, ResetIcon, SearchIcon } from '@sanity/icons';
 import { set, unset, useFormValue, type ArrayOfObjectsInputProps } from 'sanity';
 
 const PREVIEW_CHANNEL = 'bookitcms-tokens';
 const PREVIEW_STORE = 'bookitcms.preview.css';
+const PREVIEW_READY = 'bookitcms-preview-ready';
+
+type PreviewProduct = 'marketing' | 'hotels' | 'vip' | 'ticketing';
 
 import {
   colorValue,
@@ -87,6 +90,7 @@ export function StyleValuesInput(props: ArrayOfObjectsInputProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [expandedOnce, setExpandedOnce] = useState(false);
   const [openRow, setOpenRow] = useState<string | null>(null);
+  const previewWindows = useRef<Partial<Record<PreviewProduct, Window>>>({});
 
   const overrideByPath = useMemo(() => {
     const map = new Map<string, TokenOverride>();
@@ -158,6 +162,36 @@ export function StyleValuesInput(props: ArrayOfObjectsInputProps) {
     return declarations.join('');
   }, [cssVars]);
 
+  const previewUrls = useMemo<Record<PreviewProduct, URL>>(() => {
+    const configured = process.env.SANITY_STUDIO_PREVIEW_URL;
+    const local = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!local && configured) {
+      const base = new URL(configured, window.location.href);
+      return { marketing: base, hotels: base, vip: base, ticketing: base };
+    }
+    if (local) {
+      return {
+        marketing: new URL('http://localhost:3335/'),
+        hotels: new URL('http://127.0.0.1:3337/'),
+        vip: new URL('http://localhost:3334/'),
+        ticketing: new URL('http://localhost:3336/'),
+      };
+    }
+    const base = new URL('/static/previews/index.html', window.location.href);
+    return { marketing: base, hotels: base, vip: base, ticketing: base };
+  }, []);
+
+  const sendToPreview = useCallback(
+    (target: Window | null | undefined, origin: string) => {
+      if (!target || target.closed || !previewCss) return;
+      target.postMessage(
+        { type: PREVIEW_CHANNEL, tenant: tenantSlug, css: previewCss },
+        origin,
+      );
+    },
+    [previewCss, tenantSlug],
+  );
+
   // Push to any open preview tab. Also stored, so a tab opened later paints
   // with the current values immediately instead of waiting for the next edit.
   useEffect(() => {
@@ -167,23 +201,40 @@ export function StyleValuesInput(props: ArrayOfObjectsInputProps) {
     } catch {
       /* private mode — the channel still works for open tabs */
     }
+    (Object.keys(previewUrls) as PreviewProduct[]).forEach((product) =>
+      sendToPreview(previewWindows.current[product], previewUrls[product].origin),
+    );
     if (typeof BroadcastChannel === 'undefined') return;
     const channel = new BroadcastChannel(PREVIEW_CHANNEL);
     channel.postMessage({ tenant: tenantSlug, css: previewCss });
     channel.close();
-  }, [previewCss, tenantSlug]);
+  }, [previewCss, previewUrls, sendToPreview, tenantSlug]);
+
+  useEffect(() => {
+    const allowedOrigins = new Set(Object.values(previewUrls).map((url) => url.origin));
+    const onReady = (event: MessageEvent) => {
+      if (event.data?.type !== PREVIEW_READY || !allowedOrigins.has(event.origin)) return;
+      sendToPreview(event.source as Window | null, event.origin);
+    };
+    window.addEventListener('message', onReady);
+    return () => window.removeEventListener('message', onReady);
+  }, [previewUrls, sendToPreview]);
 
   const openPreview = useCallback(
-    (product: 'ticketing' | 'vip') => {
+    (product: PreviewProduct) => {
       try {
         localStorage.setItem(PREVIEW_STORE, previewCss);
       } catch {
         /* ignore */
       }
-      const url = `/static/previews/index.html?product=${product}${tenantSlug ? `&tenant=${encodeURIComponent(tenantSlug)}` : ''}`;
-      window.open(url, `bookitcms-preview-${product}`, 'noopener');
+      const url = new URL(previewUrls[product]);
+      url.searchParams.set('studioOrigin', window.location.origin);
+      if (tenantSlug) url.searchParams.set('tenant', tenantSlug);
+      previewWindows.current[product] = window.open(url, `bookitcms-preview-${product}`) ?? undefined;
+      window.setTimeout(() => sendToPreview(previewWindows.current[product], url.origin), 500);
+      window.setTimeout(() => sendToPreview(previewWindows.current[product], url.origin), 1500);
     },
-    [previewCss, tenantSlug],
+    [previewUrls, sendToPreview, tenantSlug],
   );
 
   const orphaned = useMemo(
@@ -312,7 +363,25 @@ export function StyleValuesInput(props: ArrayOfObjectsInputProps) {
                 fontSize={1}
                 padding={3}
                 radius={2}
-                text="Preview Ticketing"
+                text="Marketing"
+                onClick={() => openPreview('marketing')}
+              />
+              <Button
+                icon={LaunchIcon}
+                mode="ghost"
+                fontSize={1}
+                padding={3}
+                radius={2}
+                text="Hotels"
+                onClick={() => openPreview('hotels')}
+              />
+              <Button
+                icon={LaunchIcon}
+                mode="ghost"
+                fontSize={1}
+                padding={3}
+                radius={2}
+                text="Tickets"
                 onClick={() => openPreview('ticketing')}
               />
               <Button
@@ -864,3 +933,4 @@ function TextControl({
 }
 
 export default StyleValuesInput;
+

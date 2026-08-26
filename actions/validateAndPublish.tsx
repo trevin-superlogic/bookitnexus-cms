@@ -29,6 +29,7 @@ import { overriddenPaths, type TokenOverride } from '../lib/tokens/overrides';
 import type { ValidationIssue, ValidationResult, TokenManifest } from '../lib/tokens/validate';
 import type { StoredToken } from '../lib/tokens/types';
 import manifestJson from '../schemas/tokens/required-tokens.json';
+import { pageActionsForType } from './pageActions';
 
 const manifest = manifestJson as unknown as TokenManifest;
 
@@ -434,6 +435,8 @@ export const resolveDocumentActions = (
   context: { schemaType: string },
 ): DocumentActionComponent[] => {
   const GATED_TYPES = ['brandTheme', 'foundationTokens'];
-  if (!GATED_TYPES.includes(context.schemaType)) return prev;
-  return [validateAndPublish, ...prev.filter((action) => action.action !== 'publish')];
+  const withPageActions = pageActionsForType(prev, context.schemaType);
+  if (!GATED_TYPES.includes(context.schemaType)) return withPageActions;
+  return [validateAndPublish, ...withPageActions.filter((action) => action.action !== 'publish')];
 };
+

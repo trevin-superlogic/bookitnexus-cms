@@ -244,6 +244,15 @@ export const deskStructure = (S: StructureBuilder, _context: StructureResolverCo
             ),
         ),
 
+      S.listItem()
+        .title('Page blueprints')
+        .id('pageBlueprints')
+        .child(
+          S.documentTypeList('pageBlueprint')
+            .title('Reusable page blueprints')
+            .apiVersion('2024-10-01'),
+        ),
+
       S.divider(),
 
       S.listItem()
@@ -295,3 +304,4 @@ export const defaultDocumentNode: DefaultDocumentNodeResolver = (S, { schemaType
   }
   return S.document();
 };
+

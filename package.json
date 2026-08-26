@@ -7,6 +7,7 @@
   "scripts": {
     "setup": "bash setup.sh",
     "dev": "sanity dev",
+    "preview": "node scripts/serve-previews.mjs",
     "build": "sanity build",
     "deploy": "sanity deploy",
     "start": "sanity start",
@@ -18,6 +19,7 @@
     "tokens:propose-aliases": "node --experimental-strip-types scripts/propose-compat-aliases.ts",
     "tokens:import": "node --experimental-strip-types scripts/import-figma-tokens.ts",
     "seed": "node --experimental-strip-types scripts/seed-tenants.ts",
+    "pages:migrate": "sanity exec scripts/migrate-universal-pages.ts --with-user-token",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -37,3 +39,4 @@
     "node": ">=22.6.0"
   }
 }
+
