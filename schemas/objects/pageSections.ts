@@ -113,6 +113,101 @@ const merchandisingFields = [
   }),
 ];
 
+export const siteNavbarSection = defineType({
+  name: 'siteNavbarSection',
+  title: 'Navbar',
+  type: 'object',
+  description: 'Structural page slot. Navbar content is managed in Shared Content for this tenant.',
+  fields: [visibleField(), slotField()],
+  preview: {
+    select: { visible: 'visible' },
+    prepare: ({ visible }) => ({
+      title: `${visible === false ? '○ ' : ''}Navbar`,
+      subtitle: 'Uses tenant Shared Content',
+    }),
+  },
+});
+
+export const siteFooterSection = defineType({
+  name: 'siteFooterSection',
+  title: 'Footer',
+  type: 'object',
+  description: 'Structural page slot. Footer content is managed in Shared Content for this tenant.',
+  fields: [visibleField(), slotField()],
+  preview: {
+    select: { visible: 'visible' },
+    prepare: ({ visible }) => ({
+      title: `${visible === false ? '○ ' : ''}Footer`,
+      subtitle: 'Uses tenant Shared Content',
+    }),
+  },
+});
+
+export const linkTilesSection = defineType({
+  name: 'linkTilesSection',
+  title: 'Link tiles',
+  type: 'object',
+  description: 'An editorial tile row. Every tile links directly to an internal route or an external URL; no API identifier is required.',
+  fields: [
+    visibleField(),
+    slotField(),
+    defineField({ name: 'heading', title: 'Heading', type: 'string', validation: (Rule) => Rule.required() }),
+    defineField({
+      name: 'tiles',
+      title: 'Tiles',
+      type: 'array',
+      validation: (Rule) => Rule.min(1).warning('Add at least one tile or the application fallback will be shown.'),
+      of: [
+        defineArrayMember({
+          name: 'linkTileItem',
+          title: 'Link tile',
+          type: 'object',
+          fields: [
+            defineField({ name: 'visible', title: 'Visible', type: 'boolean', initialValue: true }),
+            defineField({ name: 'label', title: 'Label', type: 'string', validation: (Rule) => Rule.required() }),
+            defineField({
+              name: 'route',
+              title: 'Destination route',
+              type: 'string',
+              description: 'Use an internal path beginning with / or a complete https URL.',
+              validation: (Rule) =>
+                Rule.required().custom((value) =>
+                  !value || value.startsWith('/') || value.startsWith('https://')
+                    ? true
+                    : 'Use an internal path beginning with / or a complete https URL.',
+                ),
+            }),
+            imageField('image', 'Tile image', 'Upload the image displayed behind this tile.'),
+            defineField({
+              name: 'openInNewWindow',
+              title: 'Open in a new window',
+              type: 'boolean',
+              initialValue: false,
+              description: 'Usually appropriate only for external destinations.',
+            }),
+          ],
+          preview: {
+            select: { title: 'label', subtitle: 'route', media: 'image', visible: 'visible' },
+            prepare: ({ title, subtitle, media, visible }) => ({
+              title: `${visible === false ? '○ ' : ''}${title || 'Link tile'}`,
+              subtitle,
+              media,
+            }),
+          },
+        }),
+      ],
+    }),
+    analyticsField(),
+  ],
+  preview: {
+    select: { title: 'heading', tiles: 'tiles', visible: 'visible' },
+    prepare: ({ title, tiles, visible }) => ({
+      title: `${visible === false ? '○ ' : ''}${title || 'Link tiles'}`,
+      subtitle: `${tiles?.length ?? 0} route-based tiles`,
+    }),
+  },
+});
+
 export const marketingHeroSearchSection = defineType({
   name: 'marketingHeroSearchSection',
   title: 'Marketing hero and search',
@@ -363,7 +458,13 @@ export const ticketDiscoveryControlsSection = defineType({
   fields: [
     visibleField(),
     slotField(),
-    defineField({ name: 'heading', title: 'Location-aware heading prefix', type: 'string' }),
+    defineField({
+      name: 'heading',
+      title: 'Location-aware heading prefix (legacy)',
+      type: 'string',
+      hidden: true,
+      deprecated: { reason: 'The location-aware heading is now its own fixed structural section.' },
+    }),
     defineField({
       name: 'quickDateLabels',
       title: 'Quick-date labels',
@@ -378,6 +479,20 @@ export const ticketDiscoveryControlsSection = defineType({
     analyticsField(),
   ],
   preview: { select: { title: 'heading', visible: 'visible' }, prepare: ({ title, visible }) => ({ title: `${visible === false ? '○ ' : ''}${title || 'Ticket discovery controls'}` }) },
+});
+
+export const ticketPopularNearHeadingSection = defineType({
+  name: 'ticketPopularNearHeadingSection',
+  title: 'Popular near heading',
+  type: 'object',
+  description: 'Structural marker for the application-owned, location-aware “Popular near…” heading. It has no editorial controls.',
+  fields: [slotField()],
+  preview: {
+    prepare: () => ({
+      title: 'Popular near heading',
+      subtitle: 'Location-aware · no controls',
+    }),
+  },
 });
 
 export const ticketCollectionGroupSection = defineType({
@@ -402,8 +517,9 @@ export const ticketCollectionGroupSection = defineType({
 
 export const ticketPopularCitiesSection = defineType({
   name: 'ticketPopularCitiesSection',
-  title: 'Popular ticket cities',
+  title: 'Popular ticket cities (legacy)',
   type: 'object',
+  deprecated: { reason: 'Use Link tiles with direct routes and uploaded images.' },
   fields: [
     visibleField(),
     slotField(),
@@ -570,6 +686,9 @@ export const brandLogoStripSection = defineType({
 });
 
 export const pageSectionTypes = [
+  siteNavbarSection,
+  siteFooterSection,
+  linkTilesSection,
   marketingHeroSearchSection,
   editorialIntroSection,
   commerceShelfSection,
@@ -580,6 +699,7 @@ export const pageSectionTypes = [
   mediaSplitSection,
   ctaBannerSection,
   ticketHeroSearchSection,
+  ticketPopularNearHeadingSection,
   ticketDiscoveryControlsSection,
   ticketCollectionGroupSection,
   ticketPopularCitiesSection,

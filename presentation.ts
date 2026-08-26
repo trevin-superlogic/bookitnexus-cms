@@ -19,23 +19,23 @@ const homeDocument = (filter: string) =>
 const pageLocation = (route: string, title: string) =>
   defineLocations({
     select: { title: 'title', heading: 'heading', route: 'route', tenantSlug: 'tenant.slug.current' },
-    resolve: (document) => ({
-      locations:
-        document?.route === route
-          ? [{ title: document.title || document.heading || title, href: `/__sanity-preview/${document.tenantSlug || DEFAULT_TENANT_SLUG}` }]
-          : [],
-    }),
+    resolve: (document) =>
+      document?.route === route
+        ? {
+            locations: [{ title: document.title || document.heading || title, href: `/__sanity-preview/${document.tenantSlug || DEFAULT_TENANT_SLUG}` }],
+          }
+        : undefined,
   });
 
 const productLocation = (modality: string, title: string) =>
   defineLocations({
     select: { modality: 'modality', tenantSlug: 'tenant.slug.current' },
-    resolve: (document) => ({
-      locations:
-        document?.modality === modality
-          ? [{ title, href: `/__sanity-preview/${document.tenantSlug || DEFAULT_TENANT_SLUG}` }]
-          : [],
-    }),
+    resolve: (document) =>
+      document?.modality === modality
+        ? {
+            locations: [{ title, href: `/__sanity-preview/${document.tenantSlug || DEFAULT_TENANT_SLUG}` }],
+          }
+        : undefined,
   });
 
 export const marketingPresentationResolve: PresentationPluginOptions['resolve'] = {
@@ -45,16 +45,15 @@ export const marketingPresentationResolve: PresentationPluginOptions['resolve'] 
   locations: {
     pageContent: defineLocations({
       select: { title: 'title', heading: 'heading', route: 'route', slug: 'slug.current', tenantSlug: 'tenant.slug.current' },
-      resolve: (document) => ({
-        locations:
-          document?.route === 'marketing/page' &&
-          document.slug === 'home'
-            ? [{
+      resolve: (document) =>
+        document?.route === 'marketing/page' && document.slug === 'home'
+          ? {
+              locations: [{
                 title: document.title || document.heading || 'Marketing home',
                 href: `/__sanity-preview/${document.tenantSlug || DEFAULT_TENANT_SLUG}`,
-              }]
-            : [],
-      }),
+              }],
+            }
+          : undefined,
     }),
   },
 };

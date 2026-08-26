@@ -136,7 +136,7 @@ export const createTenantPreviewHeader = (surface: PreviewSurface, surfaceTitle:
             title: 'Homepage',
             modality: modalityFromRoute(route),
             templateKey,
-            templateVersion: 1,
+            templateVersion: 2,
             sections: defaultSectionsForTemplate(templateKey),
           }
         : {};

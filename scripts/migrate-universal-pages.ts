@@ -134,15 +134,88 @@ const productForPage = (page: RecordValue, products: RecordValue[]) => {
   return preferred(exact) || preferred(fallback);
 };
 
+const defaultLinkTiles = (slotKey: 'category-tiles' | 'popular-city-tiles'): RecordValue => {
+  const section = defaultSectionsForTemplate('ticketing-home-v1').find(
+    (candidate) => candidate._type === 'linkTilesSection' && candidate.slotKey === slotKey,
+  );
+  if (!section) throw new Error(`Missing default Ticketing link-tile slot: ${slotKey}`);
+  return clone(section);
+};
+
+const routeTiles = (items: RecordValue[] | undefined) =>
+  items?.map((item, index) => ({
+    _key: item._key || `tile-${index}`,
+    _type: 'linkTileItem',
+    visible: item.visible !== false,
+    label: item.label,
+    route: item.route || item.url,
+    image: item.image,
+    openInNewWindow: item.openInNewWindow || (item.route || item.url || '').startsWith('https://'),
+  })).filter((item) => item.label && item.route);
+
+const normalizeTicketSections = (
+  sections: RecordValue[],
+  product: RecordValue | undefined,
+) => {
+  const home = product?.ticketing?.homepage || {};
+  const bySlot = (slot: string) => sections.find((section) => section.slotKey === slot);
+  const byType = (type: string) => sections.find((section) => section._type === type);
+
+  const hero = bySlot('hero') || byType('ticketHeroSearchSection');
+  const discovery = bySlot('discovery-controls') || byType('ticketDiscoveryControlsSection');
+  const collections = bySlot('collections') || byType('ticketCollectionGroupSection');
+  const categoryTiles = bySlot('category-tiles') || {
+    ...defaultLinkTiles('category-tiles'),
+    tiles: routeTiles(home.categoryTiles) || defaultLinkTiles('category-tiles').tiles,
+  };
+  const popularCityTiles = bySlot('popular-city-tiles') || {
+    ...defaultLinkTiles('popular-city-tiles'),
+    tiles: routeTiles(home.popularCities) || defaultLinkTiles('popular-city-tiles').tiles,
+  };
+
+  const coreTypes = new Set([
+    'siteNavbarSection',
+    'siteFooterSection',
+    'ticketHeroSearchSection',
+    'ticketPopularNearHeadingSection',
+    'ticketDiscoveryControlsSection',
+    'ticketCollectionGroupSection',
+    'ticketPopularCitiesSection',
+    'linkTilesSection',
+  ]);
+  const extras = sections.filter((section) => !coreTypes.has(section._type));
+
+  return [
+    hero,
+    { _key: 'tickets-popular-near-heading', _type: 'ticketPopularNearHeadingSection', slotKey: 'popular-near-heading' },
+    discovery ? { ...discovery, heading: undefined } : undefined,
+    collections,
+    categoryTiles,
+    popularCityTiles,
+    ...extras,
+  ].filter(Boolean) as RecordValue[];
+};
+
+const normalizeGlobalChrome = (sections: RecordValue[]) => {
+  const navbar = sections.find((section) => section.slotKey === 'navbar' || section._type === 'siteNavbarSection') ||
+    { _key: 'page-navbar', _type: 'siteNavbarSection', slotKey: 'navbar', visible: true };
+  const footer = sections.find((section) => section.slotKey === 'footer' || section._type === 'siteFooterSection') ||
+    { _key: 'page-footer', _type: 'siteFooterSection', slotKey: 'footer', visible: true };
+  const body = sections.filter((section) => section !== navbar && section !== footer && section._type !== 'siteNavbarSection' && section._type !== 'siteFooterSection');
+  return [navbar, ...body, footer];
+};
+
 const ticketSections = (page: RecordValue, product: RecordValue | undefined) => {
   const ticketing = product?.ticketing || {};
   const home = ticketing.homepage || {};
   const hero = home.hero || {};
   return [
     { _key: 'tickets-hero', _type: 'ticketHeroSearchSection', slotKey: 'hero', visible: true, heading: page.heading || hero.heading || hero.headline, subheading: page.subheading || hero.subheading, image: hero.image, mobileImage: hero.mobileImage, searchPlaceholder: ticketing.searchPlaceholder, locationPlaceholder: home.locationPlaceholder },
-    { _key: 'tickets-discovery', _type: 'ticketDiscoveryControlsSection', slotKey: 'discovery-controls', visible: true, heading: home.collections?.find((item: RecordValue) => item.visible !== false)?.heading || 'Popular near you', quickDateLabels: home.dateFilterLabels },
+    { _key: 'tickets-popular-near-heading', _type: 'ticketPopularNearHeadingSection', slotKey: 'popular-near-heading' },
+    { _key: 'tickets-discovery', _type: 'ticketDiscoveryControlsSection', slotKey: 'discovery-controls', visible: true, quickDateLabels: home.dateFilterLabels },
     { _key: 'tickets-collections', _type: 'ticketCollectionGroupSection', slotKey: 'collections', visible: true, collections: clone(home.collections || []) },
-    { _key: 'tickets-cities', _type: 'ticketPopularCitiesSection', slotKey: 'popular-cities', visible: true, heading: 'Popular cities', pinnedCityIds: home.popularCities?.map((city: RecordValue) => city.sourceId).filter(Boolean), itemLimit: home.popularCities?.length || 8 },
+    { ...defaultLinkTiles('category-tiles'), tiles: routeTiles(home.categoryTiles) || defaultLinkTiles('category-tiles').tiles },
+    { ...defaultLinkTiles('popular-city-tiles'), tiles: routeTiles(home.popularCities) || defaultLinkTiles('popular-city-tiles').tiles },
   ];
 };
 
@@ -174,15 +247,24 @@ async function main() {
     const existingTypes = (page.sections || []).map((section: RecordValue) => section._type);
     const alreadyUniversal = Array.isArray(page.sections) && existingTypes.every((type: string) => type !== 'contentSection');
     let sections = alreadyUniversal ? page.sections : undefined;
+    const product = productForPage(page, products);
 
     if (!sections && page.route === 'marketing/page') sections = marketingSections(page);
-    if (!sections && page.route === 'ticketing/home') sections = ticketSections(page, productForPage(page, products));
-    if (!sections && page.route === 'vip/home') sections = vipSections(page, productForPage(page, products));
+    if (!sections && page.route === 'ticketing/home') sections = ticketSections(page, product);
+    if (!sections && page.route === 'vip/home') sections = vipSections(page, product);
     if (!sections && page.route === 'hotels/home') sections = hotelSections(page);
     if (!sections) sections = defaultSectionsForTemplate(templateKey);
 
-    const set = { title: page.title || pageTitle(page), modality, templateKey, templateVersion: 1, sections };
-    const changed = page.title !== set.title || page.modality !== modality || page.templateKey !== templateKey || !alreadyUniversal;
+    if (page.route === 'ticketing/home') sections = normalizeTicketSections(sections, product);
+    sections = clone(normalizeGlobalChrome(sections));
+
+    const set = { title: page.title || pageTitle(page), modality, templateKey, templateVersion: 2, sections };
+    const changed =
+      page.title !== set.title ||
+      page.modality !== modality ||
+      page.templateKey !== templateKey ||
+      page.templateVersion !== 2 ||
+      JSON.stringify(page.sections || []) !== JSON.stringify(sections);
     if (changed) changes.push({ page, set });
   }
 

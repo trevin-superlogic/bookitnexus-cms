@@ -274,10 +274,10 @@ const SECTION_INSERT_GROUPS = [
   {
     name: 'shared',
     title: 'Shared building blocks',
-    of: ['editorialIntroSection', 'commerceShelfSection', 'valuePropositionGridSection', 'promoBannerSection', 'faqSection', 'mediaSplitSection', 'ctaBannerSection'],
+    of: ['siteNavbarSection', 'siteFooterSection', 'linkTilesSection', 'editorialIntroSection', 'commerceShelfSection', 'valuePropositionGridSection', 'promoBannerSection', 'faqSection', 'mediaSplitSection', 'ctaBannerSection'],
   },
   { name: 'marketing', title: 'Marketing', of: ['marketingHeroSearchSection', 'dealGridSection', 'marketingQualificationHero', 'marketingQualificationOptions', 'marketingTrustMetrics'] },
-  { name: 'ticketing', title: 'Tickets', of: ['ticketHeroSearchSection', 'ticketDiscoveryControlsSection', 'ticketCollectionGroupSection', 'ticketPopularCitiesSection'] },
+  { name: 'ticketing', title: 'Tickets', of: ['ticketHeroSearchSection', 'ticketPopularNearHeadingSection', 'ticketDiscoveryControlsSection', 'ticketCollectionGroupSection', 'ticketPopularCitiesSection'] },
   { name: 'vip', title: 'VIP Experiences', of: ['vipHeroSearchSection', 'vipSecondaryNavigationSection', 'vipExperienceCollectionSection', 'vipCategoryGridSection'] },
   { name: 'hotels', title: 'Stays', of: ['hotelHeroSearchSection', 'appDownloadPromoSection', 'brandLogoStripSection'] },
 ] as const;
@@ -322,7 +322,13 @@ const sectionsField = (includeLegacy: boolean) =>
 
         const slots = new Set(typedSections.map((section) => section.slotKey).filter(Boolean));
         const missing = definition.requiredSlots.filter((slot) => !slots.has(slot));
-        return missing.length > 0 ? `Required template slots are missing: ${missing.join(', ')}.` : true;
+        if (missing.length > 0) return `Required template slots are missing: ${missing.join(', ')}.`;
+
+        const navbarIndex = typedSections.findIndex((section) => section.slotKey === 'navbar');
+        if (navbarIndex > 0) return 'Navbar must remain the first page section.';
+        const footerIndex = typedSections.findIndex((section) => section.slotKey === 'footer');
+        if (footerIndex >= 0 && footerIndex !== typedSections.length - 1) return 'Footer must remain the last page section.';
+        return true;
       }),
   });
 

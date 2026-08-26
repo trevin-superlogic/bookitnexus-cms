@@ -603,17 +603,23 @@ export const ticketingContentConfig = defineType({
         }),
         defineField({
           name: "categoryTiles",
-          title: "Category tiles",
+          title: "Category tiles (legacy)",
           type: "array",
-          description: `Ordered marketing tiles such as Concerts, Sports, Theater, and Special Events. ${INHERITS}`,
+          description: "Migrated to the Homepage → Categories Link tiles section.",
           of: [defineArrayMember({ type: "discoveryTile" })],
+          readOnly: true,
+          hidden: true,
+          deprecated: { reason: "Edit the Categories Link tiles section on the Ticketing Homepage." },
         }),
         defineField({
           name: "popularCities",
-          title: "Popular city tiles",
+          title: "Popular city tiles (legacy)",
           type: "array",
-          description: `Ordered city destinations such as Las Vegas, New York City, London, and Chicago. ${INHERITS}`,
+          description: "Migrated to the Homepage → Popular cities Link tiles section.",
           of: [defineArrayMember({ type: "discoveryTile" })],
+          readOnly: true,
+          hidden: true,
+          deprecated: { reason: "Edit the Popular cities Link tiles section on the Ticketing Homepage." },
         }),
         defineField({
           name: "heading",
@@ -710,3 +716,4 @@ export const ticketingContentConfig = defineType({
     }),
   ],
 });
+

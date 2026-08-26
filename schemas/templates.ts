@@ -81,7 +81,7 @@ export const standardContentTemplates: Template[] = [
         modality: modalityFromRoute(route),
         route,
         templateKey,
-        templateVersion: 1,
+        templateVersion: 2,
         ...(templateKey ? { sections: defaultSectionsForTemplate(templateKey) } : {}),
       };
     },
@@ -104,7 +104,7 @@ export const standardContentTemplates: Template[] = [
         route: 'marketing/page',
         slug: { _type: 'slug', current: slug ?? '' },
         templateKey: resolvedTemplateKey,
-        templateVersion: 1,
+        templateVersion: 2,
         sections: defaultSectionsForTemplate(resolvedTemplateKey),
       };
     },
@@ -120,11 +120,17 @@ export const standardContentTemplates: Template[] = [
       title: 'Hotels concept page',
       slug: { _type: 'slug', current: 'hotels' },
       templateKey: 'flexible-v1',
-      templateVersion: 1,
+      templateVersion: 2,
       heading: 'Private hotel rates worth checking in for.',
       subheading: 'A demo-only Hotels surface. Availability, pricing, authentication, and booking remain API-owned.',
       analyticsKey: 'hotels-concept-demo',
       sections: [
+        {
+          _key: 'page-navbar',
+          _type: 'siteNavbarSection',
+          slotKey: 'navbar',
+          visible: true,
+        },
         {
           _key: 'hotels-hero',
           _type: 'marketingHeroSearchSection',
@@ -176,6 +182,12 @@ export const standardContentTemplates: Template[] = [
           ctaLabel: 'Become a member',
           ctaUrl: '/membership',
           actionKey: 'openMembership',
+        },
+        {
+          _key: 'page-footer',
+          _type: 'siteFooterSection',
+          slotKey: 'footer',
+          visible: true,
         },
       ],
     },
