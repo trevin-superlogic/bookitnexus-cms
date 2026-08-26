@@ -113,8 +113,8 @@ export const sharedContent = defineType({
       type: 'siteMetadata',
       group: 'metadata',
       description:
-        'Head metadata for the whole tenant. Individual pages carry the same fields and override only what ' +
-        'they set, so a page can change its title while keeping this favicon and social image.',
+        'Head metadata for the whole tenant. Pages may override route-specific SEO fields such as title, ' +
+        'description, canonical URL and social image; browser identity and icons remain tenant-wide here.',
     }),
     defineField({
       name: 'spreePay',
@@ -278,7 +278,7 @@ const SECTION_INSERT_GROUPS = [
   },
   { name: 'marketing', title: 'Marketing', of: ['marketingHeroSearchSection', 'dealGridSection', 'marketingQualificationHero', 'marketingQualificationOptions', 'marketingTrustMetrics'] },
   { name: 'ticketing', title: 'Tickets', of: ['ticketHeroSearchSection', 'ticketPopularNearHeadingSection', 'ticketDiscoveryControlsSection', 'ticketCollectionGroupSection', 'ticketPopularCitiesSection'] },
-  { name: 'vip', title: 'VIP Experiences', of: ['vipHeroSearchSection', 'vipSecondaryNavigationSection', 'vipExperienceCollectionSection', 'vipCategoryGridSection'] },
+  { name: 'vip', title: 'VIP Experiences', of: ['vipHeroSearchSection', 'vipSecondaryNavigationSection', 'vipExperienceCollectionSection'] },
   { name: 'hotels', title: 'Stays', of: ['hotelHeroSearchSection', 'appDownloadPromoSection', 'brandLogoStripSection'] },
 ] as const;
 
@@ -455,6 +455,72 @@ export const pageContent = defineType({
         'universal default, so setting just a title here keeps the tenant favicon and social image.',
     }),
     defineField({
+      name: 'hotelSearchContent',
+      title: 'Search results content',
+      type: 'object',
+      group: 'content',
+      hidden: ({ document }) => document?.route !== 'hotels/search',
+      description: 'Labels and empty-state copy used by the Stays search and results page.',
+      fields: [
+        defineField({
+          name: 'resultsCountTemplate',
+          title: 'Results count text',
+          type: 'string',
+          description: 'Text above the results list. Use {count} where the number of properties should appear.',
+          validation: (Rule) =>
+            Rule.custom((value) => !value || value.includes('{count}') ? true : 'Include {count} for the result total.'),
+        }),
+        defineField({ name: 'noResultsHeading', title: 'No results heading', type: 'string' }),
+        defineField({ name: 'noResultsMessage', title: 'No results message', type: 'text', rows: 3 }),
+        defineField({ name: 'showMapLabel', title: 'Show map button label', type: 'string' }),
+        defineField({ name: 'clearFiltersLabel', title: 'Clear all filters label', type: 'string' }),
+        defineField({
+          name: 'sortLabels',
+          title: 'Sort controls',
+          type: 'object',
+          options: { collapsible: true, collapsed: false },
+          fields: [
+            defineField({ name: 'label', title: 'Sort control label', type: 'string' }),
+            defineField({ name: 'recommended', title: 'Recommended option', type: 'string' }),
+            defineField({ name: 'priceLowHigh', title: 'Price: low to high option', type: 'string' }),
+            defineField({ name: 'priceHighLow', title: 'Price: high to low option', type: 'string' }),
+            defineField({ name: 'rating', title: 'Guest rating option', type: 'string' }),
+          ],
+        }),
+        defineField({
+          name: 'filterLabels',
+          title: 'Filter labels',
+          type: 'object',
+          options: { collapsible: true, collapsed: false },
+          fields: [
+            defineField({ name: 'hotelName', title: 'Hotel name', type: 'string' }),
+            defineField({ name: 'stars', title: 'Stars', type: 'string' }),
+            defineField({ name: 'rating', title: 'Rating', type: 'string' }),
+            defineField({ name: 'propertyType', title: 'Property type', type: 'string' }),
+            defineField({ name: 'price', title: 'Price', type: 'string' }),
+            defineField({ name: 'facilities', title: 'Facilities', type: 'string' }),
+          ],
+        }),
+      ],
+    }),
+    defineField({
+      name: 'vipSweepstakesContent',
+      title: 'Sweepstakes page content',
+      type: 'object',
+      group: 'content',
+      hidden: ({ document }) => document?.route !== 'vip/sweepstakes',
+      description: 'Copy specific to the VIP Sweepstakes page template.',
+      fields: [
+        defineField({
+          name: 'noActiveSweepstakesMessage',
+          title: 'No active sweepstakes message',
+          type: 'text',
+          rows: 3,
+          description: 'Shown when this tenant has no sweepstakes available.',
+        }),
+      ],
+    }),
+    defineField({
       name: 'modules',
       title: 'Marketing modules (legacy)',
       type: 'array',
@@ -469,8 +535,11 @@ export const pageContent = defineType({
       title: 'Additional keyed copy (legacy)',
       type: 'array',
       group: 'settings',
+      hidden: true,
+      readOnly: true,
+      deprecated: { reason: 'Values were migrated to named section fields or page-template content fields.' },
       of: [defineArrayMember({ type: 'copyEntry' })],
-      description: `Keyed strings specific to this page. ${INHERITS}`,
+      description: 'Retained in stored documents only for migration rollback.',
     }),
     defineField({
       name: 'seo',

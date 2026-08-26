@@ -197,7 +197,8 @@ const PAGE_PROJECTION = /* groq */ `{
     tiles[]{..., "image": image ${IMAGE_PROJECTION}},
     logos[]{..., "image": image ${IMAGE_PROJECTION}}
   },
-  entries[]{ key, value, visible },
+  hotelSearchContent,
+  vipSweepstakesContent,
   "metadata": metadata ${METADATA_PROJECTION},
   seo
 }`;

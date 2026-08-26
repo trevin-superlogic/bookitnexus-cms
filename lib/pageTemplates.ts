@@ -114,7 +114,7 @@ export const PAGE_TEMPLATE_DEFINITIONS = [
       'promoBannerSection',
       'ctaBannerSection',
     ],
-    requiredSlots: ['navbar', 'hero', 'popular-near-heading', 'discovery-controls', 'collections', 'category-tiles', 'popular-city-tiles', 'footer'],
+    requiredSlots: ['navbar', 'hero', 'popular-near-heading', 'discovery-controls', 'collections', 'categories', 'popular-cities', 'footer'],
   },
   {
     key: 'vip-home-v1',
@@ -129,7 +129,7 @@ export const PAGE_TEMPLATE_DEFINITIONS = [
       'vipHeroSearchSection',
       'vipSecondaryNavigationSection',
       'vipExperienceCollectionSection',
-      'vipCategoryGridSection',
+      'linkTilesSection',
       'promoBannerSection',
       'valuePropositionGridSection',
       'ctaBannerSection',
@@ -203,7 +203,7 @@ export const defaultSectionsForTemplate = (key: string): Array<Record<string, un
       {
         _key: 'tickets-categories',
         _type: 'linkTilesSection',
-        slotKey: 'category-tiles',
+        slotKey: 'categories',
         visible: true,
         heading: 'Categories',
         tiles: [
@@ -215,7 +215,7 @@ export const defaultSectionsForTemplate = (key: string): Array<Record<string, un
       {
         _key: 'tickets-cities',
         _type: 'linkTilesSection',
-        slotKey: 'popular-city-tiles',
+        slotKey: 'popular-cities',
         visible: true,
         heading: 'Popular cities',
         tiles: [
@@ -235,7 +235,7 @@ export const defaultSectionsForTemplate = (key: string): Array<Record<string, un
       { _key: 'vip-trending', _type: 'vipExperienceCollectionSection', slotKey: 'collection-trending', visible: true, heading: 'Trending Experiences', sourceType: 'tag', sourceKey: 'trending', itemLimit: 12, viewAllLabel: 'View all' },
       { _key: 'vip-exclusive', _type: 'vipExperienceCollectionSection', slotKey: 'collection-exclusive', visible: true, heading: 'Exclusive Experiences', sourceType: 'tag', sourceKey: 'exclusive', itemLimit: 12, viewAllLabel: 'View all' },
       { _key: 'vip-lifetime', _type: 'vipExperienceCollectionSection', slotKey: 'collection-lifetime', visible: true, heading: 'Once in a Lifetime', sourceType: 'tag', sourceKey: 'lifetime', itemLimit: 12, viewAllLabel: 'View all' },
-      { _key: 'vip-categories', _type: 'vipCategoryGridSection', slotKey: 'categories', visible: true, heading: 'Categories' },
+      { _key: 'vip-categories', _type: 'linkTilesSection', slotKey: 'categories', visible: true, heading: 'Categories' },
     ]);
   }
 

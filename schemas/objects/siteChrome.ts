@@ -295,12 +295,16 @@ export const footerChrome = defineType({
 // ── Metadata ─────────────────────────────────────────────────────────────────
 
 /**
- * Head metadata, defined once and reusable per page.
+ * Head metadata with scope-aware fields.
  *
- * The same object is attached to Shared content and to each page, so a page can
- * override the title or social image while inheriting the favicon. Anything
- * left empty falls through: page → tenant shared → universal default.
+ * Page documents expose only route-specific SEO controls. Browser/application
+ * identity (the install name, title template, icons and theme colour) is shown
+ * only on tenant Shared Content and other tenant-wide settings documents.
+ * Anything left empty falls through: page → tenant shared → universal default.
  */
+const hiddenOnPageScope = ({ document }: { document?: { _type?: string } }) =>
+  document?._type === 'pageContent' || document?._type === 'pageBlueprint';
+
 export const siteMetadata = defineType({
   name: 'siteMetadata',
   title: 'Metadata',
@@ -311,7 +315,8 @@ export const siteMetadata = defineType({
       name: 'applicationName',
       title: 'Application name',
       type: 'string',
-      description: `Browser install and web-manifest name. ${INHERITS}`,
+      hidden: hiddenOnPageScope,
+      description: `Tenant-wide browser install and web-manifest name. ${INHERITS}`,
     }),
     defineField({
       name: 'title',
@@ -324,6 +329,7 @@ export const siteMetadata = defineType({
       name: 'titleTemplate',
       title: 'Title template',
       type: 'string',
+      hidden: hiddenOnPageScope,
       description: `How page titles compose, e.g. "%s | AIR Shop". Use %s for the page title. Tenant level only. ${INHERITS}`,
     }),
     defineField({
@@ -346,13 +352,15 @@ export const siteMetadata = defineType({
       name: 'favicon',
       title: 'Favicon',
       type: 'image',
-      description: `SVG or a 512px square PNG. Overridable per page, though rarely worth doing. ${INHERITS}`,
+      hidden: hiddenOnPageScope,
+      description: `Tenant-wide browser icon. SVG or a 512px square PNG. ${INHERITS}`,
       options: { accept: '.svg,.png,.ico' },
     }),
     defineField({
       name: 'appleTouchIcon',
       title: 'Apple touch icon',
       type: 'image',
+      hidden: hiddenOnPageScope,
       description: `180px square PNG, used when the site is saved to a home screen. ${INHERITS}`,
       options: { accept: '.png' },
     }),
@@ -368,6 +376,7 @@ export const siteMetadata = defineType({
       name: 'themeColor',
       title: 'Browser theme colour',
       type: 'string',
+      hidden: hiddenOnPageScope,
       description: `Hex value used for the mobile browser chrome, e.g. "#022647". ${INHERITS}`,
       validation: (Rule) =>
         Rule.custom((value) => (!value || /^#[0-9a-fA-F]{6}$/.test(value) ? true : 'Use a 6-digit hex like #022647.')),
@@ -408,3 +417,4 @@ export const spreePayWidget = defineType({
     urlField('termsUrl', 'Payment terms URL'),
   ],
 });
+

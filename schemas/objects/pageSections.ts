@@ -590,21 +590,6 @@ export const vipExperienceCollectionSection = defineType({
   preview: { select: { title: 'heading', sourceType: 'sourceType', sourceKey: 'sourceKey', visible: 'visible' }, prepare: ({ title, sourceType, sourceKey, visible }) => ({ title: `${visible === false ? '○ ' : ''}${title || 'Experience shelf'}`, subtitle: [sourceType, sourceKey].filter(Boolean).join(' · ') }) },
 });
 
-export const vipCategoryGridSection = defineType({
-  name: 'vipCategoryGridSection',
-  title: 'VIP category grid',
-  type: 'object',
-  fields: [
-    visibleField(),
-    slotField(),
-    defineField({ name: 'heading', title: 'Heading', type: 'string' }),
-    defineField({ name: 'tiles', title: 'Category tiles', type: 'array', of: [defineArrayMember({ type: 'discoveryTile' })] }),
-    defineField({ name: 'variant', title: 'Approved component variant', type: 'string' }),
-    analyticsField(),
-  ],
-  preview: { select: { title: 'heading', tiles: 'tiles', visible: 'visible' }, prepare: ({ title, tiles, visible }) => ({ title: `${visible === false ? '○ ' : ''}${title || 'VIP categories'}`, subtitle: `${tiles?.length ?? 0} tiles` }) },
-});
-
 export const hotelHeroSearchSection = defineType({
   name: 'hotelHeroSearchSection',
   title: 'Stays hero and search',
@@ -616,6 +601,18 @@ export const hotelHeroSearchSection = defineType({
     defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'string' }),
     defineField({ name: 'heading', title: 'Heading', type: 'string' }),
     defineField({ name: 'subheading', title: 'Subheading', type: 'text', rows: 3 }),
+    defineField({
+      name: 'ctaLabel',
+      title: 'Featured stay action label',
+      type: 'string',
+      description: 'Label on the action that opens the featured stay, for example “View hotel”.',
+    }),
+    defineField({
+      name: 'featuredHotelId',
+      title: 'Featured hotel ID',
+      type: 'string',
+      description: 'Optional hotel catalog ID used by the application for the featured stay action.',
+    }),
     imageField('image', 'Hero image'),
     imageField('mobileImage', 'Mobile hero image'),
     defineField({
@@ -706,7 +703,6 @@ export const pageSectionTypes = [
   vipHeroSearchSection,
   vipSecondaryNavigationSection,
   vipExperienceCollectionSection,
-  vipCategoryGridSection,
   hotelHeroSearchSection,
   appDownloadPromoSection,
   brandLogoStripSection,

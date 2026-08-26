@@ -12,6 +12,41 @@ const cleanId = (id: string) => id.replace(/^drafts\./, '');
 const isDraft = (id: string) => id.startsWith('drafts.');
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
+const canonicalValue = (value: any): any => {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value)
+        .sort()
+        .map((key) => [key, canonicalValue(value[key])]),
+    );
+  }
+  return value;
+};
+
+const sameValue = (left: any, right: any) =>
+  JSON.stringify(canonicalValue(left)) === JSON.stringify(canonicalValue(right));
+
+const pageEntries = (page: RecordValue) =>
+  Object.fromEntries(
+    (page.entries || [])
+      .filter((entry: RecordValue) => entry?.key && entry.visible !== false)
+      .map((entry: RecordValue) => [entry.key, entry.value]),
+  ) as Record<string, string | undefined>;
+
+const populatedObject = (value: RecordValue): RecordValue | undefined => {
+  const populated = Object.fromEntries(
+    Object.entries(value).filter(([, fieldValue]) => {
+      if (fieldValue === undefined) return false;
+      if (fieldValue && typeof fieldValue === 'object' && !Array.isArray(fieldValue)) {
+        return Object.keys(fieldValue).length > 0;
+      }
+      return true;
+    }),
+  );
+  return Object.keys(populated).length > 0 ? populated : undefined;
+};
+
 const textBlocks = (text: string | undefined) =>
   text
     ? [{ _key: 'body', _type: 'block', style: 'normal', markDefs: [], children: [{ _key: 'text', _type: 'span', marks: [], text }] }]
@@ -110,6 +145,7 @@ const marketingSections = (page: RecordValue) => {
 };
 
 const hotelSections = (page: RecordValue) => {
+  const entries = pageEntries(page);
   const legacy: RecordValue[] = page.sections || [];
   const byKey = (key: string) => legacy.find((section) => (section.key || section._key) === key) || {};
   const hero = byKey('featuredHotel');
@@ -117,12 +153,70 @@ const hotelSections = (page: RecordValue) => {
   const app = byKey('marketing');
   const brands = byKey('brandStrip');
   return [
-    { _key: 'hotels-hero', _type: 'hotelHeroSearchSection', slotKey: 'hero', visible: hero.visible !== false, heading: page.heading || hero.heading, subheading: page.subheading || hero.body, image: hero.image, enabledSearchModes: ['hotels'], defaultSearchMode: 'hotels' },
+    { _key: 'hotels-hero', _type: 'hotelHeroSearchSection', slotKey: 'hero', visible: hero.visible !== false, eyebrow: entries['hero.eyebrow'], heading: page.heading || hero.heading, subheading: page.subheading || hero.body, ctaLabel: entries['hero.ctaLabel'], featuredHotelId: entries['hero.hotelId'], image: hero.image, enabledSearchModes: ['hotels'], defaultSearchMode: 'hotels' },
     { _key: 'hotels-featured', _type: 'commerceShelfSection', slotKey: 'featured-hotels', visible: hero.visible !== false, heading: hero.heading || 'Featured stays', body: hero.body, source: 'hotels', selectionMode: 'automatic', itemLimit: 8, fallbackBehavior: 'broaden', ctaLabel: hero.ctaLabel, ctaUrl: hero.ctaUrl },
     { _key: 'hotels-values', _type: 'valuePropositionGridSection', slotKey: 'value-propositions', visible: values.visible !== false, heading: values.heading || 'Why book with us', body: values.body, backgroundImage: values.image, items: portableItems(values.items) },
     { _key: 'hotels-app', _type: 'appDownloadPromoSection', slotKey: 'app-download', visible: app.visible !== false, heading: app.heading, body: app.body, image: app.image, mobileImage: app.mobileImage, ctaLabel: app.ctaLabel },
-    { _key: 'hotels-brands', _type: 'brandLogoStripSection', slotKey: 'brand-strip', visible: brands.visible !== false, heading: brands.heading, subheading: brands.body, logos: brands.logos },
+    { _key: 'hotels-brands', _type: 'brandLogoStripSection', slotKey: 'brand-strip', visible: brands.visible !== false, heading: brands.heading || entries['brandStrip.heading'], subheading: brands.body, logos: brands.logos },
   ];
+};
+
+const normalizeHotelHomeSections = (sections: RecordValue[], page: RecordValue) => {
+  const entries = pageEntries(page);
+  return sections.map((section) => {
+    if (section.slotKey === 'hero' || section._type === 'hotelHeroSearchSection') {
+      return {
+        ...section,
+        eyebrow: section.eyebrow ?? entries['hero.eyebrow'],
+        ctaLabel: section.ctaLabel ?? entries['hero.ctaLabel'],
+        featuredHotelId: section.featuredHotelId ?? entries['hero.hotelId'],
+      };
+    }
+    if (section.slotKey === 'brand-strip' || section._type === 'brandLogoStripSection') {
+      return { ...section, heading: section.heading ?? entries['brandStrip.heading'] };
+    }
+    return section;
+  });
+};
+
+const hotelSearchContent = (page: RecordValue) => {
+  const entries = pageEntries(page);
+  const current = page.hotelSearchContent || {};
+  const currentSort = current.sortLabels || {};
+  const currentFilters = current.filterLabels || {};
+  const sortLabels = populatedObject({
+    label: currentSort.label ?? entries['sort.label'],
+    recommended: currentSort.recommended ?? entries['sort.recommendedLabel'],
+    priceLowHigh: currentSort.priceLowHigh ?? entries['sort.priceLowHighLabel'],
+    priceHighLow: currentSort.priceHighLow ?? entries['sort.priceHighLowLabel'],
+    rating: currentSort.rating ?? entries['sort.ratingLabel'],
+  });
+  const filterLabels = populatedObject({
+    hotelName: currentFilters.hotelName ?? entries['filters.hotelNameLabel'],
+    stars: currentFilters.stars ?? entries['filters.starsLabel'],
+    rating: currentFilters.rating ?? entries['filters.ratingLabel'],
+    propertyType: currentFilters.propertyType ?? entries['filters.propertyTypeLabel'],
+    price: currentFilters.price ?? entries['filters.priceLabel'],
+    facilities: currentFilters.facilities ?? entries['filters.facilitiesLabel'],
+  });
+  return populatedObject({
+    resultsCountTemplate: current.resultsCountTemplate ?? entries['results.countTemplate'],
+    noResultsHeading: current.noResultsHeading ?? entries['results.noResultsHeading'],
+    noResultsMessage: current.noResultsMessage ?? entries['results.noResultsMessage'],
+    showMapLabel: current.showMapLabel ?? entries['map.showLabel'],
+    clearFiltersLabel: current.clearFiltersLabel ?? entries['filters.clearAllLabel'],
+    sortLabels,
+    filterLabels,
+  });
+};
+
+const vipSweepstakesContent = (page: RecordValue) => {
+  const entries = pageEntries(page);
+  return populatedObject({
+    ...(page.vipSweepstakesContent || {}),
+    noActiveSweepstakesMessage:
+      page.vipSweepstakesContent?.noActiveSweepstakesMessage ?? entries['emptyState.noSweepstakes'],
+  });
 };
 
 const productForPage = (page: RecordValue, products: RecordValue[]) => {
@@ -134,24 +228,29 @@ const productForPage = (page: RecordValue, products: RecordValue[]) => {
   return preferred(exact) || preferred(fallback);
 };
 
-const defaultLinkTiles = (slotKey: 'category-tiles' | 'popular-city-tiles'): RecordValue => {
-  const section = defaultSectionsForTemplate('ticketing-home-v1').find(
+type LinkTileSlot = 'categories' | 'popular-cities';
+
+const defaultLinkTiles = (templateKey: 'ticketing-home-v1' | 'vip-home-v1', slotKey: LinkTileSlot): RecordValue => {
+  const section = defaultSectionsForTemplate(templateKey).find(
     (candidate) => candidate._type === 'linkTilesSection' && candidate.slotKey === slotKey,
   );
-  if (!section) throw new Error(`Missing default Ticketing link-tile slot: ${slotKey}`);
+  if (!section) throw new Error(`Missing default ${templateKey} link-tile slot: ${slotKey}`);
   return clone(section);
 };
 
-const routeTiles = (items: RecordValue[] | undefined) =>
+const routeTiles = (items: RecordValue[] | undefined, sourceRoute?: (sourceId: string) => string) =>
   items?.map((item, index) => ({
     _key: item._key || `tile-${index}`,
     _type: 'linkTileItem',
     visible: item.visible !== false,
     label: item.label,
-    route: item.route || item.url,
+    route: item.route || item.url || (item.sourceId && sourceRoute ? sourceRoute(item.sourceId) : undefined),
     image: item.image,
     openInNewWindow: item.openInNewWindow || (item.route || item.url || '').startsWith('https://'),
   })).filter((item) => item.label && item.route);
+
+const firstPopulatedTiles = (...candidates: Array<RecordValue[] | undefined>) =>
+  candidates.find((candidate) => candidate && candidate.length > 0);
 
 const normalizeTicketSections = (
   sections: RecordValue[],
@@ -164,13 +263,31 @@ const normalizeTicketSections = (
   const hero = bySlot('hero') || byType('ticketHeroSearchSection');
   const discovery = bySlot('discovery-controls') || byType('ticketDiscoveryControlsSection');
   const collections = bySlot('collections') || byType('ticketCollectionGroupSection');
-  const categoryTiles = bySlot('category-tiles') || {
-    ...defaultLinkTiles('category-tiles'),
-    tiles: routeTiles(home.categoryTiles) || defaultLinkTiles('category-tiles').tiles,
+  const categoryDefault = defaultLinkTiles('ticketing-home-v1', 'categories');
+  const categoryCurrent = bySlot('categories') || bySlot('category-tiles');
+  const categoryTiles = {
+    ...categoryDefault,
+    ...(categoryCurrent || {}),
+    _type: 'linkTilesSection',
+    slotKey: 'categories',
+    tiles: firstPopulatedTiles(
+      routeTiles(categoryCurrent?.tiles, (sourceId) => `/browse/${encodeURIComponent(sourceId)}`),
+      routeTiles(home.categoryTiles, (sourceId) => `/browse/${encodeURIComponent(sourceId)}`),
+      categoryDefault.tiles,
+    ),
   };
-  const popularCityTiles = bySlot('popular-city-tiles') || {
-    ...defaultLinkTiles('popular-city-tiles'),
-    tiles: routeTiles(home.popularCities) || defaultLinkTiles('popular-city-tiles').tiles,
+  const citiesDefault = defaultLinkTiles('ticketing-home-v1', 'popular-cities');
+  const citiesCurrent = bySlot('popular-cities') || bySlot('popular-city-tiles');
+  const popularCityTiles = {
+    ...citiesDefault,
+    ...(citiesCurrent || {}),
+    _type: 'linkTilesSection',
+    slotKey: 'popular-cities',
+    tiles: firstPopulatedTiles(
+      routeTiles(citiesCurrent?.tiles, (sourceId) => `/browse/${encodeURIComponent(sourceId)}`),
+      routeTiles(home.popularCities, (sourceId) => `/browse/${encodeURIComponent(sourceId)}`),
+      citiesDefault.tiles,
+    ),
   };
 
   const coreTypes = new Set([
@@ -214,8 +331,8 @@ const ticketSections = (page: RecordValue, product: RecordValue | undefined) => 
     { _key: 'tickets-popular-near-heading', _type: 'ticketPopularNearHeadingSection', slotKey: 'popular-near-heading' },
     { _key: 'tickets-discovery', _type: 'ticketDiscoveryControlsSection', slotKey: 'discovery-controls', visible: true, quickDateLabels: home.dateFilterLabels },
     { _key: 'tickets-collections', _type: 'ticketCollectionGroupSection', slotKey: 'collections', visible: true, collections: clone(home.collections || []) },
-    { ...defaultLinkTiles('category-tiles'), tiles: routeTiles(home.categoryTiles) || defaultLinkTiles('category-tiles').tiles },
-    { ...defaultLinkTiles('popular-city-tiles'), tiles: routeTiles(home.popularCities) || defaultLinkTiles('popular-city-tiles').tiles },
+    { ...defaultLinkTiles('ticketing-home-v1', 'categories'), tiles: firstPopulatedTiles(routeTiles(home.categoryTiles, (sourceId) => `/browse/${encodeURIComponent(sourceId)}`), defaultLinkTiles('ticketing-home-v1', 'categories').tiles) },
+    { ...defaultLinkTiles('ticketing-home-v1', 'popular-cities'), tiles: firstPopulatedTiles(routeTiles(home.popularCities, (sourceId) => `/browse/${encodeURIComponent(sourceId)}`), defaultLinkTiles('ticketing-home-v1', 'popular-cities').tiles) },
   ];
 };
 
@@ -228,8 +345,33 @@ const vipSections = (page: RecordValue, product: RecordValue | undefined) => {
     { _key: 'vip-hero', _type: 'vipHeroSearchSection', slotKey: 'hero', visible: true, eyebrow: 'Bookit access', heading: page.heading || hero.heading || 'Unique Experiences for You', subheading: page.subheading || hero.subheading, image: hero.image, mobileImage: hero.mobileImage, searchPlaceholder: vip.searchPlaceholder, searchLabel: 'Search' },
     { _key: 'vip-navigation', _type: 'vipSecondaryNavigationSection', slotKey: 'secondary-navigation', visible: true, links: clone(vip.secondaryNavigation || []) },
     ...collections.map((collection, index) => ({ ...clone(collection), _key: collection._key || `collection-${index}`, _type: 'vipExperienceCollectionSection', slotKey: `collection-${collection._key || index}` })),
-    { _key: 'vip-categories', _type: 'vipCategoryGridSection', slotKey: 'categories', visible: true, heading: 'Categories', tiles: clone(home.categoryTiles || []) },
+    { ...defaultLinkTiles('vip-home-v1', 'categories'), tiles: routeTiles(home.categoryTiles, (sourceId) => `/experiences?category=${encodeURIComponent(sourceId)}`) },
   ];
+};
+
+const normalizeVipSections = (sections: RecordValue[], product: RecordValue | undefined) => {
+  const home = product?.vip?.homepage || {};
+  const currentIndex = sections.findIndex(
+    (section) => section.slotKey === 'categories' || section._type === 'vipCategoryGridSection',
+  );
+  const current = currentIndex >= 0 ? sections[currentIndex] : undefined;
+  const fallback = defaultLinkTiles('vip-home-v1', 'categories');
+  const categories = {
+    ...fallback,
+    ...(current || {}),
+    _type: 'linkTilesSection',
+    slotKey: 'categories',
+    tiles: firstPopulatedTiles(
+      routeTiles(current?.tiles, (sourceId) => `/experiences?category=${encodeURIComponent(sourceId)}`),
+      routeTiles(home.categoryTiles, (sourceId) => `/experiences?category=${encodeURIComponent(sourceId)}`),
+      fallback.tiles,
+    ),
+  };
+
+  if (currentIndex >= 0) {
+    return sections.map((section, index) => index === currentIndex ? categories : section);
+  }
+  return [...sections, categories];
 };
 
 async function main() {
@@ -256,15 +398,29 @@ async function main() {
     if (!sections) sections = defaultSectionsForTemplate(templateKey);
 
     if (page.route === 'ticketing/home') sections = normalizeTicketSections(sections, product);
+    if (page.route === 'vip/home') sections = normalizeVipSections(sections, product);
+    if (page.route === 'hotels/home') sections = normalizeHotelHomeSections(sections, page);
     sections = clone(normalizeGlobalChrome(sections));
 
-    const set = { title: page.title || pageTitle(page), modality, templateKey, templateVersion: 2, sections };
+    const routeFields: RecordValue = {};
+    if (page.route === 'hotels/search') {
+      const content = hotelSearchContent(page);
+      if (content) routeFields.hotelSearchContent = content;
+    }
+    if (page.route === 'vip/sweepstakes') {
+      const content = vipSweepstakesContent(page);
+      if (content) routeFields.vipSweepstakesContent = content;
+    }
+
+    const set = { title: page.title || pageTitle(page), modality, templateKey, templateVersion: 4, sections, ...routeFields };
     const changed =
       page.title !== set.title ||
       page.modality !== modality ||
       page.templateKey !== templateKey ||
-      page.templateVersion !== 2 ||
-      JSON.stringify(page.sections || []) !== JSON.stringify(sections);
+      page.templateVersion !== 4 ||
+      !sameValue(page.sections || [], sections) ||
+      ('hotelSearchContent' in routeFields && !sameValue(page.hotelSearchContent, routeFields.hotelSearchContent)) ||
+      ('vipSweepstakesContent' in routeFields && !sameValue(page.vipSweepstakesContent, routeFields.vipSweepstakesContent));
     if (changed) changes.push({ page, set });
   }
 
